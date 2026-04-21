@@ -446,13 +446,6 @@ input:checked + .pg-slider:before { transform: translateX(20px); }
   margin-top: 24px;
 }
 
-.pg-meta-author {
-  font-weight: 700;
-  color: var(--pg-fg);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
 .pg-meta-date { font-weight: 500; }
 
 .pg-meta-dot {
@@ -598,8 +591,7 @@ html.pg-reader main p.pg-section-first:not(.pg-no-dropcap)::first-letter {
 
 /* ── Footnote Reference ──────────────────────────────────── */
 
-.pg-reader .pg-fn-ref,
-.pg-reader main a[href^="#"][text^="["] {
+.pg-reader .pg-fn-ref {
   font-size: 0.72em;
   font-weight: 600;
   vertical-align: super;
@@ -868,20 +860,6 @@ html.pg-reader main p.pg-section-first:not(.pg-no-dropcap)::first-letter {
 .pg-reader main code.pg-code-inline::first-letter {
   font-weight: inherit !important;
   color: inherit !important;
-}
-
-/* ── YC Apply Link (preserved from sidebar) ──────────────── */
-
-.pg-yc-apply {
-  padding: 16px 50px;
-  border-top: 1px solid var(--pg-border);
-  font-size: 0.85em;
-}
-
-.pg-yc-apply a {
-  color: var(--pg-muted);
-  text-decoration: underline;
-  text-underline-offset: 3px;
 }
 
 /* ── Code / Pre ──────────────────────────────────────────── */
@@ -1264,8 +1242,6 @@ html.pg-reader main p.pg-section-first:not(.pg-no-dropcap)::first-letter {
   .pg-reader .pg-blockquote, .pg-reader blockquote { background: none; }
 }
 
-/* ── Reduced Motion ──────────────────────────────────────── */
-
 /* ── Articles Page Layout ────────────────────────────────── */
 
 html.pg-articles-layout .pg-reader main {
@@ -1280,24 +1256,6 @@ html.pg-articles-layout .pg-reader h1 {
   font-size: 2.8rem;
   letter-spacing: -0.03em;
   text-align: left;
-}
-
-/* Year section label */
-.pg-year-heading {
-  font-size: 0.68rem !important;
-  font-weight: 800 !important;
-  text-transform: uppercase !important;
-  letter-spacing: 0.22em !important;
-  color: var(--pg-nav-bg) !important;
-  margin: 0 !important;
-  padding: 2.8rem 48px 0.8rem !important;
-  border-top: 1px solid var(--pg-border) !important;
-  display: block !important;
-}
-
-html.pg-articles-layout main > .pg-year-heading:first-of-type {
-  border-top: none !important;
-  padding-top: 1.5rem !important;
 }
 
 /* Articles-page intro prose ("If you're not sure which to read, try ...") */
@@ -1383,7 +1341,6 @@ html.pg-articles-layout main > .pg-year-heading:first-of-type {
 
 @media (max-width: 768px) {
   html.pg-articles-layout .pg-title-area { padding: 32px 20px 28px; }
-  .pg-year-heading { padding: 2rem 20px 0.6rem !important; }
   .pg-essay-item   { padding: 0.48em 20px !important; }
 }
 

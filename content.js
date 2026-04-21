@@ -703,12 +703,11 @@
             hr.className = 'pg-section-break';
             // If the text is the only meaningful child of a decorative wrapper
             // (<center>, <p>, <div>), replace that wrapper entirely.
-            const wrapper = parent;
-            const onlyChild = wrapper && wrapper.childNodes.length === 1 &&
-                ['CENTER', 'P', 'DIV'].includes(wrapper.tagName);
-            if (onlyChild) {
-                wrapper.parentNode.insertBefore(hr, wrapper);
-                wrapper.remove();
+            const onlyChild = parent && parent.childNodes.length === 1 &&
+                ['CENTER', 'P', 'DIV'].includes(parent.tagName);
+            if (onlyChild && parent.parentNode) {
+                parent.parentNode.insertBefore(hr, parent);
+                parent.remove();
             } else {
                 parent.insertBefore(hr, node);
                 node.remove();
@@ -1293,9 +1292,6 @@
     function wrapThanksSection(main) {
         // A Thanks paragraph typically starts with "Thanks to" near the end of the essay
         // (before Notes if present, else at the very tail).
-        const searchRoot = main.querySelector('.pg-notes') || main;
-        const host = searchRoot === main ? main : main; // Thanks lives in main, before notes
-
         const paragraphs = Array.from(main.querySelectorAll(':scope > p'));
         const thanksIdx = paragraphs.findIndex(p =>
             /^\s*Thanks to\b/i.test(p.textContent.trim())
@@ -1725,7 +1721,7 @@
 
     function autolinkUrls(root) {
         // Match bare http/https URLs. Stop at whitespace or common trailing punctuation.
-        const urlRe = /\bhttps?:\/\/[^\s<>()'"]+/g;
+        const urlRe = /\bhttps?:\/\/[^\s<>()'"]+/;
         const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
             acceptNode(node) {
                 if (node.parentElement && node.parentElement.closest('a,code,pre')) {

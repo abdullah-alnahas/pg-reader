@@ -4,7 +4,8 @@
   "version": "2.1.0",
   "description": "Readable layout, semantic HTML, and click-to-reveal footnotes for Paul Graham's essays.",
   "permissions": [
-    "storage"
+    "storage",
+    "activeTab"
   ],
   "content_scripts": [
     {
