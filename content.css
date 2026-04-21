@@ -1,0 +1,1477 @@
+/* =============================================================
+   PG Reader v2 — Visual Layer
+   =============================================================
+   Palette (light):
+     #ff6600  Orange        — nav bar, accents
+     #eeeee5  Carrara       — title area background
+     #FAFAFA  Alabaster     — outer page background
+     #FFFEF9  Warm Paper    — main content surface
+     #5A7D8C  Teal          — interactive links
+   ============================================================= */
+
+/* ── Design Tokens ───────────────────────────────────────── */
+
+.pg-reader {
+  --pg-nav-bg: #ff6600;
+  --pg-nav-fg: #ffffff;
+  --pg-title-bg: #eeeee5;
+  --pg-bg: #FAFAFA;
+  --pg-surface: #FFFEF9;
+  --pg-fg: #1D1D1F;
+  --pg-muted: #6E6E73;
+  --pg-accent: #5A7D8C;
+  --pg-accent-soft: rgba(90, 125, 140, 0.10);
+  --pg-border: #E5E5E5;
+  --pg-code-bg: #F5F5F3;
+  --pg-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.03);
+  --pg-shadow-lg: 0 4px 12px rgba(0,0,0,0.06), 0 12px 28px rgba(0,0,0,0.04);
+  --pg-notes-bg: #f7f6f0;
+
+  --pg-font: "Montserrat", "Avenir Next", "Avenir", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --pg-font-mono: 'SFMono-Regular', 'Menlo', 'Consolas', monospace;
+  --pg-lh: 1.7;
+  --pg-radius: 12px;
+
+  background: var(--pg-bg);
+  color: var(--pg-fg);
+  font-family: var(--pg-font) !important;
+  font-size: 22px;
+  line-height: var(--pg-lh);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.pg-reader *,
+.pg-reader *:before,
+.pg-reader *:after {
+  font-family: inherit !important;
+}
+
+/* ── Dark Mode (system preference) ──────────────────────── */
+
+@media (prefers-color-scheme: dark) {
+  .pg-reader:not([data-pg-theme="light"]) {
+    --pg-nav-bg: #E05E00;
+    --pg-nav-fg: #ffffff;
+    --pg-title-bg: #211F1B;
+    --pg-bg: #0A0A0A;
+    --pg-surface: #181815;
+    --pg-fg: #ECE9DF;
+    --pg-muted: #B0ADA2;
+    --pg-accent: #8FBECA;
+    --pg-accent-soft: rgba(143, 190, 202, 0.15);
+    --pg-border: #3A3835;
+    --pg-code-bg: #1F1E1B;
+    --pg-shadow: 0 1px 3px rgba(0,0,0,0.25), 0 4px 12px rgba(0,0,0,0.2);
+    --pg-shadow-lg: 0 4px 12px rgba(0,0,0,0.35), 0 12px 28px rgba(0,0,0,0.25);
+    --pg-notes-bg: #14130F;
+  }
+}
+
+/* ── Forced Dark Mode (user override) ────────────────────── */
+/* Both .pg-reader and data-pg-theme are on <html>, so no space between selectors */
+
+html.pg-reader[data-pg-theme="dark"] {
+  --pg-nav-bg: #E05E00;
+  --pg-nav-fg: #ffffff;
+  --pg-title-bg: #1C1B18;
+  --pg-bg: #0C0C0C;
+  --pg-surface: #161614;
+  --pg-fg: #E0DED8;
+  --pg-muted: #8E8E93;
+  --pg-accent: #7DAAB8;
+  --pg-accent-soft: rgba(125, 170, 184, 0.12);
+  --pg-border: #2A2A28;
+  --pg-code-bg: #1C1C1A;
+  --pg-shadow: 0 1px 3px rgba(0,0,0,0.2), 0 4px 12px rgba(0,0,0,0.15);
+  --pg-shadow-lg: 0 4px 12px rgba(0,0,0,0.3), 0 12px 28px rgba(0,0,0,0.2);
+  --pg-notes-bg: #111110;
+}
+
+/* ── Forced Light Mode (overrides system dark) ────────────── */
+
+html.pg-reader[data-pg-theme="light"] {
+  --pg-nav-bg: #ff6600;
+  --pg-nav-fg: #ffffff;
+  --pg-title-bg: #eeeee5;
+  --pg-bg: #FAFAFA;
+  --pg-surface: #FFFEF9;
+  --pg-fg: #1D1D1F;
+  --pg-muted: #6E6E73;
+  --pg-accent: #5A7D8C;
+  --pg-accent-soft: rgba(90, 125, 140, 0.10);
+  --pg-border: #E5E5E5;
+  --pg-code-bg: #F5F5F3;
+  --pg-notes-bg: #f7f6f0;
+}
+
+/* ── Body baseline (ensures dark vars apply over PG site's own body styles) */
+
+html.pg-reader body {
+  background: var(--pg-bg) !important;
+  color: var(--pg-fg) !important;
+}
+
+/* ── FOUC Prevention ─────────────────────────────────────── */
+
+html.pg-reader-pending { opacity: 0; }
+html.pg-reader        { opacity: 1; transition: opacity 200ms ease; }
+html.pg-reader-skip   { opacity: 1; }
+
+/* ── Left Progress Bar ───────────────────────────────────── */
+
+.pg-progress-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  z-index: 10002;
+  pointer-events: none;
+}
+
+.pg-progress-bar {
+  height: 100%;
+  background: var(--pg-nav-bg);
+  width: 0%;
+  transition: width 80ms linear;
+  box-shadow: 0 0 6px var(--pg-nav-bg);
+}
+
+/* ── Brand Header ────────────────────────────────────────── */
+
+.pg-brand-header {
+  background: var(--pg-bg);
+  padding: 40px 0;
+  text-align: center;
+  border-bottom: 1px solid var(--pg-border);
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pg-brand-link {
+  font-family: "Montserrat", sans-serif;
+  font-size: 36px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.3em;
+  color: var(--pg-fg);
+  text-decoration: none;
+  transition: opacity 0.2s, letter-spacing 0.3s ease;
+}
+
+.pg-brand-link:hover {
+  opacity: 0.7;
+  letter-spacing: 0.35em;
+}
+
+/* ── Theme Toggle ────────────────────────────────────────── */
+
+.pg-theme-toggle {
+  position: absolute;
+  right: 40px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: 1px solid var(--pg-border);
+  border-radius: 8px;
+  width: 40px;
+  height: 40px;
+  font-size: 18px;
+  cursor: pointer;
+  color: var(--pg-fg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 150ms ease, border-color 150ms ease;
+}
+
+.pg-theme-toggle:hover {
+  background: var(--pg-accent-soft);
+  border-color: var(--pg-accent);
+}
+
+.pg-theme-toggle:focus-visible {
+  outline: 2px solid var(--pg-accent);
+  outline-offset: 2px;
+}
+
+.pg-theme-toggle svg {
+  width: 20px;
+  height: 20px;
+  display: block;
+  transition: transform 250ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.pg-theme-toggle:hover svg {
+  transform: rotate(-12deg) scale(1.08);
+}
+
+/* ── Skip Link ───────────────────────────────────────────── */
+
+/* Skip link is visually hidden until keyboard focus — standard a11y pattern. */
+.pg-skip-link {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  transform: translateY(-150%);
+  background: var(--pg-title-bg);
+  color: var(--pg-fg);
+  border: 1px solid var(--pg-border);
+  padding: 8px 14px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+  z-index: 10001;
+  opacity: 0;
+  transition: transform 180ms ease, opacity 180ms ease;
+}
+
+.pg-skip-link:focus,
+.pg-skip-link:focus-visible {
+  transform: translateY(0);
+  opacity: 1;
+  outline: 2px solid var(--pg-accent);
+  outline-offset: 2px;
+}
+
+/* ── Top Navigation Bar ──────────────────────────────────── */
+
+.pg-topnav-hamburger { display: none; }
+
+.pg-topnav {
+  position: relative;
+  z-index: 9998;
+  background: var(--pg-nav-bg);
+  transition: all 200ms ease;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.pg-topnav-inner {
+  display: flex;
+  align-items: center;
+  max-width: 1300px;
+  margin: 0 auto;
+  padding: 0 24px;
+  height: 48px;
+  gap: 4px;
+}
+
+.pg-topnav-links {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  flex: 1;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.pg-topnav-links::-webkit-scrollbar { display: none; }
+
+.pg-topnav-link {
+  color: var(--pg-nav-fg);
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 5px 10px;
+  border-radius: 6px;
+  transition: background 150ms ease;
+  opacity: 0.92;
+  display: flex;
+  align-items: center;
+  white-space: nowrap;
+  letter-spacing: 0.01em;
+}
+
+.pg-topnav-link:hover {
+  background: rgba(255,255,255,0.2);
+  opacity: 1;
+}
+
+.pg-topnav-current {
+  background: rgba(255,255,255,0.25);
+  font-weight: 700;
+}
+
+/* ── Main Content ────────────────────────────────────────── */
+
+.pg-page {
+  min-height: 100vh;
+  background: var(--pg-bg);
+  padding: 0 0 6rem;
+}
+
+.pg-reader main {
+  max-width: 860px;
+  margin: 0 auto;
+  background: var(--pg-surface);
+}
+
+/* ── Floating Toggle Switch ──────────────────────────────── */
+
+.pg-toggle-container {
+  position: fixed;
+  bottom: 30px;
+  right: 30px;
+  z-index: 10000;
+  background: var(--pg-surface);
+  border: 1px solid var(--pg-border);
+  border-radius: 50px;
+  padding: 8px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  box-shadow: var(--pg-shadow-lg);
+  user-select: none;
+}
+
+.pg-toggle-label {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--pg-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.pg-switch {
+  position: relative;
+  display: inline-block;
+  width: 44px;
+  height: 24px;
+}
+
+.pg-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.pg-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-color: var(--pg-border);
+  transition: .3s;
+  border-radius: 24px;
+}
+
+.pg-slider:before {
+  position: absolute;
+  content: "";
+  height: 18px;
+  width: 18px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  transition: .3s;
+  border-radius: 50%;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+input:checked + .pg-slider { background-color: var(--pg-nav-bg); }
+input:checked + .pg-slider:before { transform: translateX(20px); }
+
+/* ── Back to Top ─────────────────────────────────────────── */
+
+.pg-back-to-top {
+  position: fixed;
+  bottom: 30px;
+  left: 30px;
+  z-index: 10000;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--pg-surface);
+  border: 1px solid var(--pg-border);
+  color: var(--pg-fg);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: visible;
+  box-shadow: var(--pg-shadow-lg);
+  opacity: 0;
+  transform: translateY(12px);
+  pointer-events: none;
+  transition: opacity 200ms ease, transform 200ms ease, background 150ms ease;
+}
+
+.pg-back-to-top-visible {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.pg-back-to-top:hover {
+  background: var(--pg-title-bg);
+  border-color: var(--pg-border);
+}
+
+.pg-back-to-top:focus-visible {
+  outline: 2px solid var(--pg-accent);
+  outline-offset: 2px;
+}
+
+/* ── Title Area ──────────────────────────────────────────── */
+
+.pg-title-area {
+  background: var(--pg-title-bg);
+  padding: 60px 50px 40px;
+  border-bottom: 1px solid var(--pg-border);
+}
+
+.pg-reader h1 {
+  font-size: 3.5rem;
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.04em;
+  color: var(--pg-fg);
+  margin: 0 0 16px;
+  text-align: center;
+}
+
+/* ── Meta Line ───────────────────────────────────────────── */
+
+.pg-meta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  font-size: 14px;
+  color: var(--pg-muted);
+  margin-top: 24px;
+}
+
+.pg-meta-author {
+  font-weight: 700;
+  color: var(--pg-fg);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.pg-meta-date { font-weight: 500; }
+
+.pg-meta-dot {
+  opacity: 0.3;
+  font-size: 18px;
+}
+
+.pg-meta-time {
+  font-weight: 600;
+  color: var(--pg-nav-bg);
+}
+
+/* ── Drop Cap ────────────────────────────────────────────── */
+
+html.pg-reader main p.pg-first-paragraph { display: block; }
+
+/* CSS ::first-letter fallback for paragraphs NOT handled by JS applyDropCap */
+html.pg-reader main p.pg-first-paragraph:not(.pg-drop-cap-active):not(.pg-no-dropcap)::first-letter {
+  float: left;
+  font-size: 5.6em;
+  line-height: 0.82;
+  padding-top: 8px;
+  padding-right: 14px;
+  padding-left: 0;
+  margin-top: 4px;
+  font-weight: 700;
+  color: var(--pg-accent);
+  font-family: 'Playfair Display', 'Georgia', 'Didot', 'Bodoni MT', serif !important;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+}
+
+/* JS-injected drop cap span (handles leading punctuation correctly) */
+html.pg-reader main p.pg-drop-cap-active .pg-drop-cap {
+  float: left;
+  font-size: 5.6em;
+  line-height: 0.82;
+  padding-top: 8px;
+  padding-right: 14px;
+  padding-left: 0;
+  margin-top: 4px;
+  font-weight: 700;
+  color: var(--pg-accent);
+  font-family: 'Playfair Display', 'Georgia', 'Didot', 'Bodoni MT', serif !important;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+}
+
+/* ── Section-first paragraph drop cap ───────────────────── */
+
+html.pg-reader main p.pg-section-first {
+  display: block;
+}
+
+/* Only the very first paragraph gets the journal-style drop cap.
+   Section-first and all others get the subtle bold+accent first-letter treatment
+   from the `.pg-reader main p + p::first-letter` rule below. */
+html.pg-reader main p.pg-section-first:not(.pg-no-dropcap)::first-letter {
+  font-weight: 800;
+  color: var(--pg-accent);
+}
+
+/* ── Content Body ────────────────────────────────────────── */
+
+.pg-reader main p,
+.pg-reader main .pg-blockquote,
+.pg-reader main blockquote,
+.pg-reader main pre,
+.pg-reader main ul,
+.pg-reader main ol {
+  padding-left: 50px;
+  padding-right: 50px;
+}
+
+.pg-reader main p {
+  margin-top: 0;
+  margin-bottom: 0;
+  padding-top: 0.85em;
+  padding-bottom: 0;
+}
+
+/* Minimalist paragraph spacing — pure whitespace, no visible rule. */
+.pg-reader main p + p {
+  padding-top: 1.15em;
+}
+
+/* First letter of every paragraph (after the first): bold + accent — subtle editorial hint.
+   Explicitly excluded: Notes and Thanks paragraphs (punctuation/labels would get styled). */
+.pg-reader main p:not(.pg-first-paragraph):not(.pg-drop-cap-active):not(.pg-no-dropcap)::first-letter {
+  font-weight: 700;
+  color: var(--pg-accent);
+}
+
+.pg-reader .pg-notes p::first-letter,
+.pg-reader .pg-thanks p::first-letter,
+.pg-reader .pg-yc-banner::first-letter,
+.pg-reader main p.pg-quote-para::first-letter,
+.pg-reader main ul.pg-more-info-list li::first-letter {
+  font-weight: inherit !important;
+  color: inherit !important;
+  font-size: inherit !important;
+  float: none !important;
+}
+
+/* ── Links ───────────────────────────────────────────────── */
+
+.pg-reader main a:not(.pg-skip-link):not(.pg-back-link):not(.pg-fn-ref):not(.pg-topnav-link) {
+  color: var(--pg-accent);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1px;
+  text-decoration-color: var(--pg-accent-soft);
+  transition: text-decoration-color 120ms ease;
+}
+
+.pg-reader main a:not(.pg-skip-link):not(.pg-back-link):not(.pg-fn-ref):not(.pg-topnav-link):hover {
+  text-decoration-color: var(--pg-accent);
+}
+
+.pg-reader main a:visited:not(.pg-skip-link):not(.pg-back-link):not(.pg-topnav-link) {
+  color: var(--pg-muted);
+}
+
+/* ── External Links ──────────────────────────────────────── */
+
+.pg-reader main a.pg-ext-link::after,
+.pg-topnav-link.pg-ext-link::after,
+#fn-popover a.pg-ext-link::after {
+  content: '\2197'; /* ↗ */
+  font-size: 0.65em;
+  vertical-align: super;
+  margin-left: 2px;
+  opacity: 0.55;
+  text-decoration: none;
+  display: inline-block;
+}
+
+.pg-reader a:focus-visible {
+  outline: 2px solid var(--pg-accent);
+  outline-offset: 3px;
+  border-radius: 2px;
+}
+
+/* ── Footnote Reference ──────────────────────────────────── */
+
+.pg-reader .pg-fn-ref,
+.pg-reader main a[href^="#"][text^="["] {
+  font-size: 0.72em;
+  font-weight: 600;
+  vertical-align: super;
+  text-decoration: none !important;
+  color: var(--pg-accent) !important;
+  padding: 1px 5px;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: background 120ms ease;
+}
+
+.pg-reader .pg-fn-ref:hover {
+  background: var(--pg-accent-soft);
+}
+
+/* ── Section Breaks ──────────────────────────────────────── */
+
+.pg-reader .pg-section-break {
+  border: none;
+  background: transparent;
+  height: auto;
+  margin: 2.5rem 0;
+  overflow: visible;
+  text-align: center;
+  display: block;
+}
+
+.pg-reader .pg-section-break::before {
+  content: '· · ·';
+  display: inline-block;
+  color: var(--pg-muted);
+  opacity: 0.55;
+  font-size: 1.1rem;
+  letter-spacing: 0.5em;
+  /* optical centering of the last dot's letter-spacing */
+  padding-left: 0.5em;
+}
+
+/* ── Blockquotes ─────────────────────────────────────────── */
+
+.pg-reader .pg-blockquote,
+.pg-reader blockquote {
+  margin: 1.5em 0;
+  padding-top: 0.75em;
+  padding-bottom: 0.75em;
+  padding-left: 40px !important;
+  padding-right: 32px !important;
+  border-left: 3px solid var(--pg-border);
+  color: var(--pg-muted);
+  font-style: italic;
+  background: var(--pg-title-bg);
+  border-radius: 0 var(--pg-radius) var(--pg-radius) 0;
+}
+
+/* ── Notes Section ───────────────────────────────────────── */
+
+.pg-notes {
+  background: var(--pg-notes-bg);
+  border-top: 2px solid var(--pg-border);
+  margin-top: 3rem;
+  padding: 2rem 0 2.5rem;
+}
+
+.pg-notes-heading {
+  font-size: 0.7rem !important;
+  font-weight: 800 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.15em !important;
+  color: var(--pg-muted) !important;
+  margin: 0 0 1.5rem !important;
+  padding: 0 50px !important;
+  text-align: left !important;
+}
+
+.pg-notes p {
+  font-size: 0.8em;
+  line-height: 1.6;
+  color: var(--pg-muted);
+  padding-top: 0.5em !important;
+  padding-bottom: 0 !important;
+  border-top: none !important;
+}
+
+.pg-notes p + p {
+  border-top: 1px dashed var(--pg-border) !important;
+}
+
+/* ── Thanks Section ──────────────────────────────────────── */
+
+.pg-thanks {
+  margin: 2.5rem 50px 1rem;
+  padding: 1.1rem 1.4rem;
+  border-left: 2px solid var(--pg-accent);
+  background: var(--pg-accent-soft);
+  border-radius: 0 6px 6px 0;
+}
+
+.pg-thanks::before {
+  content: 'Thanks';
+  display: block;
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: var(--pg-muted);
+  margin-bottom: 0.4rem;
+}
+
+.pg-thanks p {
+  margin: 0 !important;
+  padding: 0 !important;
+  font-size: 0.88em !important;
+  line-height: 1.6 !important;
+  color: var(--pg-muted) !important;
+  font-style: italic;
+  border: none !important;
+}
+
+.pg-thanks p + p {
+  margin-top: 0.5em !important;
+}
+
+/* Strip the literal "Thanks to" label since the section header says it */
+.pg-thanks p:first-child::first-letter {
+  text-transform: none;
+}
+
+/* ── YC Banner (top) — clean div, matches title area ───── */
+
+.pg-reader .pg-yc-banner {
+  display: block;
+  margin: 0;
+  padding: 14px 50px;
+  background: var(--pg-title-bg);
+  border-bottom: 1px solid var(--pg-border);
+  font-size: 0.88em;
+  color: var(--pg-muted);
+  line-height: 1.55;
+  text-align: center;
+  width: auto;
+  box-sizing: border-box;
+}
+
+.pg-reader .pg-yc-banner a {
+  color: var(--pg-accent) !important;
+  font-weight: 600;
+  text-decoration: none !important;
+  border-bottom: 1px solid var(--pg-accent-soft);
+  transition: border-color 120ms ease, color 120ms ease;
+}
+
+.pg-reader .pg-yc-banner a:hover {
+  color: var(--pg-nav-bg) !important;
+  border-bottom-color: var(--pg-nav-bg);
+}
+
+/* ── YC Banner (bottom) — centered boxed card ──────────── */
+
+.pg-reader .pg-yc-banner-bottom {
+  display: block;
+  margin: 2.5rem auto 1.5rem !important;
+  max-width: 560px;
+  text-align: center;
+  padding: 1rem 1.5rem !important;
+  border: 1px solid var(--pg-border);
+  border-radius: 8px;
+  background: var(--pg-title-bg);
+  box-shadow: none;
+  transition: none;
+}
+
+.pg-reader .pg-yc-banner-bottom:hover {
+  box-shadow: none;
+  background: var(--pg-title-bg);
+}
+
+/* ── Body headings (promoted from standalone <b>) ──────── */
+
+.pg-reader main h2.pg-body-heading {
+  font-size: 1.35em;
+  font-weight: 700;
+  color: var(--pg-fg);
+  margin: 2.4rem 0 0.9rem !important;
+  padding: 0 50px !important;
+  letter-spacing: -0.01em;
+  line-height: 1.3;
+}
+
+.pg-reader main h2.pg-body-heading::first-letter {
+  font-weight: 700 !important;
+  color: inherit !important;
+  font-size: inherit !important;
+  float: none !important;
+}
+
+/* ── Intro paragraph (italic parenthetical lead-in) ────── */
+
+.pg-reader main p.pg-intro {
+  font-style: italic;
+  color: var(--pg-muted);
+  font-size: 0.95em;
+  padding-left: 62px !important;
+  padding-right: 50px !important;
+  border-left: 2px solid var(--pg-border);
+  margin: 0.4em 50px 1.2em !important;
+}
+
+.pg-reader main p.pg-intro::first-letter {
+  font-weight: inherit !important;
+  color: inherit !important;
+  font-size: inherit !important;
+  float: none !important;
+}
+
+/* ── More Info Link Grid ──────────────────────────────── */
+
+.pg-reader main ul.pg-more-info-list {
+  list-style: none;
+  padding: 0.4rem 50px 0 !important;
+  margin: 0 0 2rem !important;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 0.5em 1.2em;
+}
+
+.pg-reader main ul.pg-more-info-list li {
+  padding: 0 !important;
+  margin: 0 !important;
+  line-height: 1.5;
+}
+
+.pg-reader main ul.pg-more-info-list a {
+  font-size: 0.92em;
+  display: inline-block;
+  padding: 0.18em 0;
+}
+
+/* ── Code Blocks & Inline Code ─────────────────────────── */
+
+.pg-reader main pre.pg-code-block {
+  background: var(--pg-code-bg);
+  border: 1px solid var(--pg-border);
+  border-radius: 6px;
+  padding: 0.9rem 1.1rem !important;
+  margin: 1.4rem 50px !important;
+  font-family: var(--pg-font-mono) !important;
+  font-size: 0.85em;
+  line-height: 1.55;
+  color: var(--pg-fg);
+  overflow-x: auto;
+  white-space: pre;
+  tab-size: 2;
+}
+
+.pg-reader main code.pg-code-inline {
+  background: var(--pg-code-bg);
+  border: 1px solid var(--pg-border);
+  border-radius: 4px;
+  padding: 1px 6px;
+  font-family: var(--pg-font-mono) !important;
+  font-size: 0.88em;
+  color: var(--pg-fg);
+}
+
+.pg-reader main pre.pg-code-block::first-letter,
+.pg-reader main code.pg-code-inline::first-letter {
+  font-weight: inherit !important;
+  color: inherit !important;
+}
+
+/* ── YC Apply Link (preserved from sidebar) ──────────────── */
+
+.pg-yc-apply {
+  padding: 16px 50px;
+  border-top: 1px solid var(--pg-border);
+  font-size: 0.85em;
+}
+
+.pg-yc-apply a {
+  color: var(--pg-muted);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* ── Code / Pre ──────────────────────────────────────────── */
+
+.pg-reader pre {
+  background: var(--pg-code-bg);
+  border: 1px solid var(--pg-border);
+  border-radius: 6px;
+  padding: 1em 32px !important;
+  overflow-x: auto;
+  font-family: var(--pg-font-mono);
+  font-size: 0.85em;
+  line-height: 1.6;
+  margin: 1.5em 0;
+}
+
+.pg-reader code {
+  font-family: var(--pg-font-mono);
+  font-size: 0.88em;
+  background: var(--pg-code-bg);
+  padding: 0.15em 0.4em;
+  border-radius: 3px;
+}
+
+.pg-reader pre code {
+  background: none;
+  padding: 0;
+  border-radius: 0;
+  font-size: inherit;
+}
+
+.pg-reader tt {
+  font-family: var(--pg-font-mono);
+  font-size: 0.88em;
+  background: var(--pg-code-bg);
+  padding: 0.15em 0.4em;
+  border-radius: 3px;
+}
+
+/* ── Lists ───────────────────────────────────────────────── */
+
+.pg-reader ul,
+.pg-reader ol {
+  margin: 1em 0;
+  padding-left: 3.5em !important;
+}
+
+.pg-reader li { margin-bottom: 0.4em; }
+
+/* ── Inline Images ───────────────────────────────────────── */
+
+.pg-reader main img:not(.pg-title-img) {
+  max-width: 100%;
+  height: auto;
+  margin: 1.5em 0;
+  border-radius: 4px;
+}
+
+/* ── Data Tables ─────────────────────────────────────────── */
+
+.pg-reader main table {
+  display: table;
+  border-collapse: collapse;
+  margin: 1.5em 32px;
+  font-size: 0.88em;
+  width: calc(100% - 64px);
+}
+
+.pg-reader main table td,
+.pg-reader main table th {
+  display: table-cell;
+  padding: 0.4em 0.6em;
+  text-align: left;
+}
+
+/* ── Emphasis ────────────────────────────────────────────── */
+
+.pg-reader b, .pg-reader strong { font-weight: 700; }
+.pg-reader i, .pg-reader em    { font-style: italic; }
+
+/* ── Legacy <font> Reset ─────────────────────────────────── */
+
+.pg-reader .pg-font-reset,
+.pg-reader font {
+  font-size: inherit !important;
+  font-family: inherit !important;
+  color: inherit !important;
+}
+
+/* ── Footnote Popover ──────────────────────────────────────
+   position: absolute — popover scrolls WITH the page so it stays anchored
+   near the footnote reference instead of drifting while the reader scrolls.
+   Sized responsively with max-height + internal scroll for long notes.        */
+
+#fn-popover {
+  position: absolute;
+  z-index: 10003;
+  margin: 0;
+  padding: 0;
+  width: max-content;
+  max-width: min(380px, calc(100vw - 32px));
+  max-height: 420px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background: var(--pg-surface);
+  border: 1px solid var(--pg-border);
+  border-radius: 10px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.14), 0 2px 8px rgba(0,0,0,0.08);
+  font-size: 0.9rem;
+  line-height: 1.6;
+  color: var(--pg-fg);
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity 160ms ease, transform 160ms ease;
+  pointer-events: none;
+}
+
+#fn-popover[hidden] {
+  display: none !important;
+}
+
+#fn-popover.fn-visible {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+/* Arrow pointing at the trigger — visual affordance for the relationship */
+
+#fn-popover .fn-arrow {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  background: var(--pg-surface);
+  border: 1px solid var(--pg-border);
+  transform: rotate(45deg);
+  pointer-events: none;
+}
+
+#fn-popover[data-arrow="top"] .fn-arrow {
+  top: -7px;
+  border-right: none;
+  border-bottom: none;
+  margin-left: -6px;
+}
+
+#fn-popover[data-arrow="bottom"] .fn-arrow {
+  bottom: -7px;
+  border-left: none;
+  border-top: none;
+  margin-left: -6px;
+}
+
+#fn-popover .fn-header {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px 8px 16px;
+  background: var(--pg-accent-soft);
+  border-bottom: 1px solid var(--pg-border);
+}
+
+#fn-popover .fn-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--pg-muted);
+}
+
+#fn-popover .fn-close {
+  background: none;
+  border: none;
+  font-size: 20px;
+  line-height: 1;
+  color: var(--pg-muted);
+  cursor: pointer;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 120ms ease, color 120ms ease;
+}
+
+#fn-popover .fn-close:hover {
+  background: var(--pg-border);
+  color: var(--pg-fg);
+}
+
+#fn-popover .fn-close:focus-visible {
+  outline: 2px solid var(--pg-accent);
+  outline-offset: 2px;
+}
+
+#fn-popover .fn-content {
+  flex: 1 1 auto;
+  padding: 12px 16px 16px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+
+#fn-popover .fn-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+#fn-popover .fn-content::-webkit-scrollbar-thumb {
+  background: var(--pg-border);
+  border-radius: 3px;
+}
+
+#fn-popover .fn-content a {
+  color: var(--pg-accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* ── Inline footnote reference (only the digit is clickable;
+   brackets remain as plain text). Styled like normal body text. ── */
+
+.pg-reader main a.pg-fn-ref {
+  display: inline;
+  font-size: inherit !important;
+  vertical-align: baseline;
+  line-height: inherit !important;
+  color: var(--pg-accent) !important;
+  text-decoration: underline !important;
+  text-decoration-thickness: 1px !important;
+  text-underline-offset: 2px !important;
+  text-decoration-color: var(--pg-accent-soft) !important;
+  font-weight: inherit;
+  padding: 0;
+  margin: 0;
+  transition: text-decoration-color 120ms ease, color 120ms ease;
+}
+
+.pg-reader main a.pg-fn-ref:hover,
+.pg-reader main a.pg-fn-ref:focus-visible {
+  color: var(--pg-nav-bg) !important;
+  text-decoration-color: var(--pg-nav-bg) !important;
+  outline: none;
+}
+
+/* Ensure fn-ref never gets first-letter drop-cap/bold treatment */
+.pg-reader main a.pg-fn-ref::first-letter {
+  font-weight: inherit !important;
+  color: inherit !important;
+  font-size: inherit !important;
+  float: none !important;
+}
+
+/* ── Strip hardcoded bgcolor attributes inside main ──────
+   PG's essays contain <td bgcolor="#ffe799"> etc. that defeat theming.
+   Blanket override so dark theme applies cleanly.                          */
+
+.pg-reader main [bgcolor] {
+  background-color: transparent !important;
+  background: transparent !important;
+}
+
+/* ── Book promo banner — detected as table with amazon link ──── */
+
+.pg-reader main .pg-book-promo {
+  display: block;
+  margin: 2.5rem 50px 1.5rem;
+  padding: 1.2rem 1.5rem;
+  background: var(--pg-accent-soft) !important;
+  border: 1px solid var(--pg-border);
+  border-radius: 8px;
+  text-align: center;
+  font-size: 0.92em;
+  color: var(--pg-fg);
+  line-height: 1.55;
+}
+
+.pg-reader main .pg-book-promo a {
+  color: var(--pg-accent) !important;
+  font-weight: 600;
+  text-decoration: none !important;
+  border-bottom: 1px solid var(--pg-accent-soft);
+  transition: border-color 120ms ease;
+}
+
+.pg-reader main .pg-book-promo a:hover {
+  border-bottom-color: var(--pg-accent);
+}
+
+.pg-reader main .pg-book-promo::first-letter {
+  font-weight: inherit !important;
+  color: inherit !important;
+  font-size: inherit !important;
+}
+
+/* ── YC banner internals reset — PG's inline orange td ──── */
+
+.pg-reader .pg-yc-banner,
+.pg-reader .pg-yc-banner * {
+  background-color: transparent !important;
+}
+
+.pg-reader .pg-yc-banner {
+  background: var(--pg-title-bg) !important;
+}
+
+.pg-reader .pg-yc-banner-bottom {
+  background: var(--pg-title-bg) !important;
+}
+
+.pg-reader .pg-yc-banner img[src*="spacer"],
+.pg-reader .pg-yc-banner img[width="1"] {
+  display: none !important;
+}
+
+.pg-reader .pg-yc-banner td,
+.pg-reader .pg-yc-banner tr,
+.pg-reader .pg-yc-banner table {
+  border: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  background: transparent !important;
+}
+
+.pg-reader .pg-yc-banner a {
+  color: var(--pg-accent) !important;
+  font-weight: 600;
+}
+
+/* ── Back Link ───────────────────────────────────────────── */
+
+.pg-back-link {
+  display: inline-block;
+  padding: 20px 50px 0;
+  color: var(--pg-muted);
+  text-decoration: none;
+  font-size: 0.8em;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  transition: color 150ms ease;
+}
+
+.pg-back-link:hover { color: var(--pg-accent); }
+
+/* ── Print ───────────────────────────────────────────────── */
+
+@media print {
+  .pg-topnav,
+  .pg-progress-container,
+  .pg-back-link,
+  .pg-skip-link,
+  .pg-theme-toggle,
+  .pg-back-to-top,
+  .pg-toggle-container,
+  #fn-popover {
+    display: none !important;
+  }
+
+  .pg-page { padding: 0; background: #fff; }
+  .pg-reader main { box-shadow: none; border-radius: 0; max-width: 100%; }
+  .pg-title-area { background: none; padding: 0 0 16px; border-bottom: 1px solid #ccc; }
+
+  .pg-reader main p,
+  .pg-reader main .pg-blockquote,
+  .pg-reader main blockquote,
+  .pg-reader main pre,
+  .pg-reader main ul,
+  .pg-reader main ol {
+    padding-left: 0;
+    padding-right: 0;
+  }
+
+  .pg-reader main p { border-top: none; }
+  .pg-reader h1 { font-size: 18pt; }
+  .pg-reader { font-size: 12pt; color: #000; }
+  .pg-reader a[href^="http"]::after { content: " (" attr(href) ")"; font-size: 0.8em; color: #555; }
+  .pg-reader .pg-fn-ref::after { content: none; }
+  .pg-reader .pg-blockquote, .pg-reader blockquote { background: none; }
+}
+
+/* ── Reduced Motion ──────────────────────────────────────── */
+
+/* ── Articles Page Layout ────────────────────────────────── */
+
+html.pg-articles-layout .pg-reader main {
+  max-width: 780px;
+}
+
+html.pg-articles-layout .pg-title-area {
+  padding: 52px 48px 40px;
+}
+
+html.pg-articles-layout .pg-reader h1 {
+  font-size: 2.8rem;
+  letter-spacing: -0.03em;
+  text-align: left;
+}
+
+/* Year section label */
+.pg-year-heading {
+  font-size: 0.68rem !important;
+  font-weight: 800 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.22em !important;
+  color: var(--pg-nav-bg) !important;
+  margin: 0 !important;
+  padding: 2.8rem 48px 0.8rem !important;
+  border-top: 1px solid var(--pg-border) !important;
+  display: block !important;
+}
+
+html.pg-articles-layout main > .pg-year-heading:first-of-type {
+  border-top: none !important;
+  padding-top: 1.5rem !important;
+}
+
+/* Articles-page intro prose ("If you're not sure which to read, try ...") */
+.pg-articles-intro {
+  padding: 1.2rem 48px 1.6rem;
+  font-size: 1em;
+  line-height: 1.75;
+  color: var(--pg-fg);
+  border-bottom: 1px solid var(--pg-border);
+}
+
+.pg-articles-intro p {
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+.pg-articles-intro a {
+  color: var(--pg-accent) !important;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-color: var(--pg-accent-soft);
+  font-weight: 500;
+}
+
+.pg-articles-intro a:hover {
+  text-decoration-color: var(--pg-accent);
+}
+
+.pg-articles-intro::first-letter,
+.pg-articles-intro p::first-letter {
+  font-weight: inherit !important;
+  color: inherit !important;
+  font-size: inherit !important;
+  float: none !important;
+}
+
+/* Essay list: clean vertical rows */
+.pg-essay-list {
+  list-style: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+.pg-essay-item {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 0.48em 48px !important;
+  border-bottom: 1px solid var(--pg-border);
+  transition: background 120ms ease;
+}
+
+.pg-essay-item:hover {
+  background: var(--pg-accent-soft);
+}
+
+.pg-essay-link {
+  color: var(--pg-fg) !important;
+  text-decoration: none !important;
+  font-size: 0.92em;
+  font-weight: 500;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: color 120ms ease;
+}
+
+.pg-essay-item:hover .pg-essay-link {
+  color: var(--pg-nav-bg) !important;
+}
+
+.pg-essay-date {
+  font-size: 0.72em;
+  color: var(--pg-muted);
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  margin-left: 1.5em;
+  flex-shrink: 0;
+}
+
+@media (max-width: 768px) {
+  html.pg-articles-layout .pg-title-area { padding: 32px 20px 28px; }
+  .pg-year-heading { padding: 2rem 20px 0.6rem !important; }
+  .pg-essay-item   { padding: 0.48em 20px !important; }
+}
+
+/* ── Reduced Motion ──────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  .pg-reader .pg-progress-bar { display: none; }
+  .pg-back-to-top { transition: none; }
+
+  .pg-reader,
+  .pg-reader *,
+  .pg-reader *::before,
+  .pg-reader *::after {
+    transition-duration: 0ms !important;
+    animation-duration: 0ms !important;
+  }
+}
+
+/* ── Responsive: Tablet ──────────────────────────────────── */
+
+@media (max-width: 768px) {
+  .pg-topnav-link       { display: none; }
+  .pg-topnav-hamburger  { display: flex !important; }
+
+  .pg-topnav-links {
+    display: none;
+    position: absolute;
+    top: 52px;
+    left: 0;
+    right: 0;
+    background: var(--pg-nav-bg);
+    flex-direction: column;
+    padding: 8px 16px 16px;
+    gap: 2px;
+    box-shadow: 0 8px 16px rgba(0,0,0,0.15);
+  }
+
+  .pg-topnav-links.pg-topnav-links-open { display: flex; }
+
+  .pg-topnav-links .pg-topnav-link {
+    display: block;
+    padding: 10px 12px;
+    font-size: 15px;
+    white-space: normal;
+  }
+
+  .pg-page { padding: 1.5rem 0.5rem 3rem; }
+  .pg-reader main { }
+  .pg-title-area { padding: 28px 20px 24px; }
+  .pg-reader h1 { font-size: 1.75rem; }
+
+  .pg-reader main p,
+  .pg-reader main .pg-blockquote,
+  .pg-reader main blockquote,
+  .pg-reader main pre,
+  .pg-reader main ul,
+  .pg-reader main ol {
+    padding-left: 20px;
+    padding-right: 20px;
+  }
+
+  .pg-notes-heading { padding: 0 20px !important; }
+  .pg-back-link { padding: 12px 20px 0; }
+  .pg-theme-toggle { right: 16px; }
+  .pg-skip-link { left: 16px; }
+  .pg-back-to-top { left: 16px; bottom: 80px; }
+  .pg-toggle-container { right: 16px; bottom: 16px; }
+}
+
+/* ── Responsive: Mobile ──────────────────────────────────── */
+
+@media (max-width: 480px) {
+  .pg-reader { font-size: 17px; }
+  .pg-reader h1 { font-size: 1.5rem; }
+  .pg-title-area { padding: 24px 16px 20px; }
+
+  .pg-reader main p,
+  .pg-reader main .pg-blockquote,
+  .pg-reader main blockquote,
+  .pg-reader main pre,
+  .pg-reader main ul,
+  .pg-reader main ol {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .pg-notes-heading { padding: 0 16px !important; }
+  #fn-popover { max-width: calc(100vw - 24px); }
+  .pg-brand-header { padding: 24px 0; }
+  .pg-brand-link { font-size: 24px; letter-spacing: 0.2em; }
+}

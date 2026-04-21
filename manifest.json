@@ -1,0 +1,34 @@
+{
+  "manifest_version": 3,
+  "name": "PG Reader",
+  "version": "2.1.0",
+  "description": "Readable layout, semantic HTML, and click-to-reveal footnotes for Paul Graham's essays.",
+  "permissions": [
+    "storage"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "*://www.paulgraham.com/*",
+        "*://paulgraham.com/*"
+      ],
+      "css": [
+        "content.css"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "run_at": "document_start"
+    }
+  ],
+  "action": {
+    "default_popup": "popup/popup.html",
+    "default_title": "PG Reader"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["fonts/*"],
+      "matches": ["*://www.paulgraham.com/*", "*://paulgraham.com/*"]
+    }
+  ]
+}
