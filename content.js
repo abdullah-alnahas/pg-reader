@@ -9,7 +9,6 @@
     'use strict';
 
     const STORAGE_KEY = 'pg-reader-enabled';
-    const NAV_HIDDEN_KEY = 'pg-reader-nav-hidden';
     const THEME_KEY = 'pg-reader-theme';
     const SCROLL_KEY = 'pg-reader-scroll';
 
@@ -27,6 +26,16 @@
         { text: 'Email', href: '/info.html' },
         { text: 'Index', href: '/ind.html' },
     ];
+
+    // Maps image-map filenames/hostnames → human-readable nav labels.
+    const AREA_LABEL_MAP = {
+        'index': 'Home', 'articles': 'Essays', 'hp': 'H&P',
+        'books': 'Books', 'ycombinator': 'Y Combinator', 'arc': 'Arc',
+        'bel': 'Bel', 'lisp': 'Lisp', 'antispam': 'Spam', 'spam': 'Spam',
+        'kedrosky': 'Responses', 'faq': 'FAQs', 'raq': 'RAQs',
+        'quo': 'Quotes', 'rss': 'RSS', 'bio': 'Bio',
+        'twitter': 'Twitter', 'mas': 'Mastodon', 'paulg': 'Mastodon',
+    };
 
     // FOUC prevention — synchronous, runs before any paint
     document.documentElement.classList.add('pg-reader-pending');
@@ -209,13 +218,16 @@
         if (!isArticlesPage) titleArea.appendChild(metaLine);
         main.insertBefore(titleArea, main.firstChild);
 
-        const backLink = createBackLink();
-        if (!isArticlesPage) main.insertBefore(backLink, titleArea);
+        if (!isArticlesPage) main.insertBefore(createBackLink(), titleArea);
 
+        mountPageChrome(main, sidebarLinks);
+    }
+
+    // Assembles and inserts all persistent page chrome (nav, brand header, progress bar,
+    // floating controls) into the document body, then wires up their behaviours.
+    function mountPageChrome(main, sidebarLinks) {
         const topNav = createTopNav(sidebarLinks);
-        const skipLink = createSkipLink();
-        const themeToggle = createThemeToggle();
-        const brandHeader = createBrandHeader(skipLink, themeToggle);
+        const brandHeader = createBrandHeader(createSkipLink(), createThemeToggle());
 
         const progressContainer = document.createElement('div');
         progressContainer.className = 'pg-progress-container';
@@ -237,7 +249,7 @@
         document.body.appendChild(toggleContainer);
         document.body.appendChild(backToTop);
 
-        // Hide every table not inside our new <main> (original layout junk)
+        // Hide every table not inside our new <main> (original layout junk).
         document.querySelectorAll('table').forEach(table => {
             if (!main.contains(table)) {
                 table.style.display = 'none';
@@ -489,15 +501,6 @@
         return out;
     }
 
-    const AREA_LABEL_MAP = {
-        'index': 'Home', 'articles': 'Essays', 'hp': 'H&P',
-        'books': 'Books', 'ycombinator': 'Y Combinator', 'arc': 'Arc',
-        'bel': 'Bel', 'lisp': 'Lisp', 'antispam': 'Spam', 'spam': 'Spam',
-        'kedrosky': 'Responses', 'faq': 'FAQs', 'raq': 'RAQs',
-        'quo': 'Quotes', 'rss': 'RSS', 'bio': 'Bio',
-        'twitter': 'Twitter', 'mas': 'Mastodon', 'paulg': 'Mastodon',
-    };
-
     function extractNavLinks(sidebarTd) {
         if (!sidebarTd) return DEFAULT_NAV_LINKS;
 
@@ -678,11 +681,18 @@
     function cleanupTitleImages(main) {
         const h1 = main.querySelector('h1');
         if (!h1) return;
+        // Only strip images that match the page title — alt matches h1, or filename
+        // matches the page slug (e.g. /design.html → design-philosophy-3.gif).
+        // Don't touch inline content images (photos, diagrams) even if they're
+        // served from the same CDN path containing "paulgraham".
+        const pageSlug = location.pathname.replace(/\.html?$/, '').replace(/^\//, '').toLowerCase();
         main.querySelectorAll('img').forEach((img) => {
-            if (img.alt === h1.textContent ||
-                (img.src && (img.src.includes('graham') || img.src.includes('paul')))) {
-                img.remove();
-            }
+            const filename = (img.getAttribute('src') || '').split('/').pop().toLowerCase();
+            const matchesTitle = img.alt && img.alt.trim() === h1.textContent.trim();
+            const matchesSlug = pageSlug && filename.startsWith(pageSlug + '-');
+            // PG's site-wide author-name banner (bel-7.gif, bel-8.gif) — duplicates our brand header
+            const isSiteHeader = /^bel-\d+\.gif$/.test(filename);
+            if (matchesTitle || matchesSlug || isSiteHeader) img.remove();
         });
     }
 
@@ -1138,117 +1148,125 @@
         });
     }
 
-    function handleYcBanner(container) {
-        const isYc = (el) => {
-            const t = el.textContent || '';
-            const linkHrefs = Array.from(el.querySelectorAll('a[href]'))
-                .map(a => a.getAttribute('href') || '');
-            const hasYcMark =
-                t.includes('Y Combinator') || t.includes('ycombinator') ||
-                t.includes('Hacker News') || t.includes('hacker news') ||
-                linkHrefs.some(h => /ycombinator\.com|news\.ycombinator/i.test(h));
-            const hasYcContext =
-                t.includes('funded') || t.includes('startup') ||
-                t.includes('apply') || t.includes('build things') ||
-                t.includes('Hacker News') || t.includes('hacker news');
-            return hasYcMark && hasYcContext;
-        };
+    // Splits a plain-text string around a known link-text substring, appending
+    // the three parts (before, anchor element, after) to a container element.
+    function appendSplitLink(div, text, linkText, anchorEl) {
+        const idx = text.indexOf(linkText);
+        const before = idx >= 0 ? text.slice(0, idx).trim() : text;
+        const after  = idx >= 0 ? text.slice(idx + linkText.length).trim() : '';
+        if (before) div.appendChild(document.createTextNode(before + ' '));
+        div.appendChild(anchorEl);
+        if (after) div.appendChild(document.createTextNode(' ' + after));
+    }
 
-        // Replace PG's table/bgcolor banner with a clean <div> that inherits
-        // our theme cleanly. Strips inner tables, spacer images, etc.
-        const rebuild = (el, isBottom) => {
-            const div = document.createElement('div');
-            div.className = isBottom ? 'pg-yc-banner pg-yc-banner-bottom' : 'pg-yc-banner';
+    // Returns true if an element looks like a PG YC/Hacker-News promotional banner.
+    function isYcElement(el) {
+        const t = el.textContent || '';
+        const linkHrefs = Array.from(el.querySelectorAll('a[href]'))
+            .map(a => a.getAttribute('href') || '');
+        const hasYcMark =
+            t.includes('Y Combinator') || t.includes('ycombinator') ||
+            t.includes('Hacker News') || t.includes('hacker news') ||
+            linkHrefs.some(h => /ycombinator\.com|news\.ycombinator/i.test(h));
+        const hasYcContext =
+            t.includes('funded') || t.includes('startup') ||
+            t.includes('apply') || t.includes('build things') ||
+            t.includes('Hacker News') || t.includes('hacker news');
+        return hasYcMark && hasYcContext;
+    }
 
-            const links = Array.from(el.querySelectorAll('a[href]')).filter(a => {
-                const href = a.getAttribute('href') || '';
-                // Skip images-only links
-                return a.textContent.trim().length > 0 &&
-                    !/\.(gif|png|jpe?g)$/i.test(href);
-            });
+    // Replaces a raw YC banner element with a clean themed <div>.
+    // Strips inner tables, spacer images, and bgcolor attributes.
+    function rebuildYcBanner(el, isBottom) {
+        const div = document.createElement('div');
+        div.className = isBottom ? 'pg-yc-banner pg-yc-banner-bottom' : 'pg-yc-banner';
 
-            const text = el.textContent.replace(/\s+/g, ' ').trim();
-            const primary = links.find(a =>
-                /ycombinator|hacker\s*news/i.test(a.href + ' ' + a.textContent)
-            ) || links[0];
+        const links = Array.from(el.querySelectorAll('a[href]')).filter(a => {
+            const href = a.getAttribute('href') || '';
+            return a.textContent.trim().length > 0 && !/\.(gif|png|jpe?g)$/i.test(href);
+        });
 
-            if (primary) {
-                const linkText = primary.textContent.trim();
-                const idx = text.indexOf(linkText);
-                const before = idx >= 0 ? text.slice(0, idx).trim() : text;
-                const after = idx >= 0 ? text.slice(idx + linkText.length).trim() : '';
+        const text = el.textContent.replace(/\s+/g, ' ').trim();
+        const primary = links.find(a =>
+            /ycombinator|hacker\s*news/i.test(a.href + ' ' + a.textContent)
+        ) || links[0];
 
-                if (before) div.appendChild(document.createTextNode(before + ' '));
-                const a = document.createElement('a');
-                a.href = primary.href;
-                a.textContent = linkText;
-                try {
-                    if (new URL(primary.href).origin !== location.origin) {
-                        a.target = '_blank';
-                        a.rel = 'noopener noreferrer';
-                        a.classList.add('pg-ext-link');
-                    }
-                } catch (_) { }
-                div.appendChild(a);
-                if (after) div.appendChild(document.createTextNode(' ' + after));
-            } else {
-                div.textContent = text;
-            }
-
-            el.replaceWith(div);
-            return div;
-        };
-
-        const children = Array.from(container.children);
-        // Top banner — first 5
-        for (let i = 0; i < Math.min(5, children.length); i++) {
-            if (isYc(children[i])) { rebuild(children[i], false); break; }
+        if (primary) {
+            const linkText = primary.textContent.trim();
+            const a = document.createElement('a');
+            a.href = primary.href;
+            a.textContent = linkText;
+            try {
+                if (new URL(primary.href).origin !== location.origin) {
+                    a.target = '_blank';
+                    a.rel = 'noopener noreferrer';
+                    a.classList.add('pg-ext-link');
+                }
+            } catch (_) { }
+            appendSplitLink(div, text, linkText, a);
+        } else {
+            div.textContent = text;
         }
-        // Bottom banner — rescan (rebuild may have shifted indexes)
+
+        el.replaceWith(div);
+        return div;
+    }
+
+    // Replaces a raw Amazon book-promo element with a clean themed <div>.
+    function rebuildBookPromo(el) {
+        const div = document.createElement('div');
+        div.className = 'pg-book-promo';
+        const text = el.textContent.replace(/\s+/g, ' ').trim();
+        const amazonLink = Array.from(el.querySelectorAll('a[href]'))
+            .find(a => /amazon\./i.test(a.getAttribute('href') || ''));
+        if (amazonLink) {
+            const linkText = amazonLink.textContent.trim();
+            const a = document.createElement('a');
+            a.href = amazonLink.href;
+            a.textContent = linkText;
+            a.target = '_blank';
+            a.rel = 'noopener noreferrer';
+            a.classList.add('pg-ext-link');
+            appendSplitLink(div, text, linkText, a);
+            // Strip leading sentence punctuation from the trailing fragment.
+            const idx = text.indexOf(linkText);
+            const after = idx >= 0 ? text.slice(idx + linkText.length).trim() : '';
+            const afterClean = after.replace(/^[.,]\s*/, '');
+            if (after !== afterClean && div.lastChild && div.lastChild.nodeType === Node.TEXT_NODE) {
+                div.lastChild.textContent = afterClean ? ' ' + afterClean : '';
+            }
+        } else {
+            div.textContent = text;
+        }
+        el.replaceWith(div);
+    }
+
+    function handleYcBanner(container) {
+        const children = Array.from(container.children);
+        // Top banner — search first 5 children.
+        for (let i = 0; i < Math.min(5, children.length); i++) {
+            if (isYcElement(children[i])) { rebuildYcBanner(children[i], false); break; }
+        }
+        // Bottom banner — rescan after potential rebuild shifted indexes.
         const fresh = Array.from(container.children);
         for (let i = fresh.length - 1; i >= Math.max(0, fresh.length - 5); i--) {
             const el = fresh[i];
             if (el.classList && el.classList.contains('pg-yc-banner')) continue;
-            if (isYc(el)) { rebuild(el, true); break; }
+            if (isYcElement(el)) { rebuildYcBanner(el, true); break; }
         }
 
-        // Book promo banner — PG's "You'll find this essay ... in <book>" links to amazon.
+        // Book promo — PG's "You'll find this essay in <book>" table links to Amazon.
         const fresh2 = Array.from(container.children);
-        const isBookPromo = (el) => {
-            const links = Array.from(el.querySelectorAll('a[href]'));
-            const hasAmazon = links.some(a => /amazon\.com\/gp\/product|amazon\.com\/dp/i.test(a.getAttribute('href') || ''));
-            const text = (el.textContent || '').trim();
-            return hasAmazon && text.length > 10 && text.length < 240 &&
-                !el.classList.contains('pg-yc-banner');
-        };
         for (let i = fresh2.length - 1; i >= Math.max(0, fresh2.length - 10); i--) {
             const el = fresh2[i];
-            if (isBookPromo(el)) {
-                const div = document.createElement('div');
-                div.className = 'pg-book-promo';
-                const text = el.textContent.replace(/\s+/g, ' ').trim();
-                const amazonLink = Array.from(el.querySelectorAll('a[href]'))
-                    .find(a => /amazon\./i.test(a.getAttribute('href') || ''));
-                if (amazonLink) {
-                    const linkText = amazonLink.textContent.trim();
-                    const idx = text.indexOf(linkText);
-                    const before = idx >= 0 ? text.slice(0, idx).trim() : text;
-                    const after = idx >= 0 ? text.slice(idx + linkText.length).trim() : '';
-                    if (before) div.appendChild(document.createTextNode(before + ' '));
-                    const a = document.createElement('a');
-                    a.href = amazonLink.href;
-                    a.textContent = linkText;
-                    a.target = '_blank';
-                    a.rel = 'noopener noreferrer';
-                    a.classList.add('pg-ext-link');
-                    div.appendChild(a);
-                    if (after) div.appendChild(document.createTextNode(after.replace(/^[.,]\s*/, '') ? ' ' + after : after));
-                } else {
-                    div.textContent = text;
-                }
-                el.replaceWith(div);
-                break;
-            }
+            const links = Array.from(el.querySelectorAll('a[href]'));
+            const hasAmazon = links.some(
+                a => /amazon\.com\/gp\/product|amazon\.com\/dp/i.test(a.getAttribute('href') || '')
+            );
+            const elText = (el.textContent || '').trim();
+            const isBookPromo = hasAmazon && elText.length > 10 && elText.length < 240 &&
+                !el.classList.contains('pg-yc-banner');
+            if (isBookPromo) { rebuildBookPromo(el); break; }
         }
     }
 
@@ -1510,12 +1528,13 @@
 
     let popoverEl = null;
 
-    function setupFootnotes() {
-        popoverEl = document.createElement('div');
-        popoverEl.id = 'fn-popover';
-        popoverEl.setAttribute('role', 'dialog');
-        popoverEl.setAttribute('aria-label', 'Footnote');
-        popoverEl.hidden = true;
+    // Builds and mounts the footnote popover DOM; returns its named sub-elements.
+    function createFootnotePopoverEl() {
+        const el = document.createElement('div');
+        el.id = 'fn-popover';
+        el.setAttribute('role', 'dialog');
+        el.setAttribute('aria-label', 'Footnote');
+        el.hidden = true;
 
         const arrow = document.createElement('div');
         arrow.className = 'fn-arrow';
@@ -1537,13 +1556,19 @@
         const content = document.createElement('div');
         content.className = 'fn-content';
 
-        popoverEl.appendChild(arrow);
-        popoverEl.appendChild(header);
-        popoverEl.appendChild(content);
-        document.body.appendChild(popoverEl);
+        el.appendChild(arrow);
+        el.appendChild(header);
+        el.appendChild(content);
+        document.body.appendChild(el);
+
+        return { el, arrow, label, closeBtn, content };
+    }
+
+    function setupFootnotes() {
+        const { el, arrow, label, closeBtn, content } = createFootnotePopoverEl();
+        popoverEl = el;
 
         let currentTrigger = null;
-        let scrollDismissTimer = null;
 
         const hidePopover = () => {
             popoverEl.classList.remove('fn-visible');
@@ -1553,7 +1578,6 @@
                 }
             }, 180);
             currentTrigger = null;
-            if (scrollDismissTimer) { clearTimeout(scrollDismissTimer); scrollDismissTimer = null; }
         };
 
         closeBtn.addEventListener('click', (e) => {
@@ -1587,6 +1611,31 @@
             if (r.bottom < -80 || r.top > vh + 80) hidePopover();
         }, { passive: true });
 
+        // Opens the popover anchored to a footnote reference link.
+        const showPopover = (link, href, noteLabel) => {
+            const targetId = href.split('#')[1];
+            if (!targetId) return;
+            const target = document.getElementById(targetId) ||
+                document.querySelector('a[name="' + targetId + '"]');
+            if (!target) return;
+
+            while (content.firstChild) content.removeChild(content.firstChild);
+            content.appendChild(extractFootnoteContent(target));
+            label.textContent = 'Note ' + noteLabel;
+
+            currentTrigger = link;
+            popoverEl.hidden = false;
+            // Reset any prior positioning so dimensions can be measured clean.
+            popoverEl.style.left = '0px';
+            popoverEl.style.top = '0px';
+
+            requestAnimationFrame(() => {
+                positionPopover(popoverEl, arrow, link);
+                popoverEl.classList.add('fn-visible');
+                setTimeout(() => { try { closeBtn.focus({ preventScroll: true }); } catch (_) { } }, 50);
+            });
+        };
+
         document.addEventListener('click', (e) => {
             const link = e.target.closest('a');
             if (!link) return;
@@ -1603,29 +1652,7 @@
             e.preventDefault();
             e.stopImmediatePropagation();
             e.stopPropagation();
-
-            const targetId = href.split('#')[1];
-            if (!targetId) return;
-            const target = document.getElementById(targetId) ||
-                document.querySelector('a[name="' + targetId + '"]');
-            if (!target) return;
-
-            const fragment = extractFootnoteContent(target);
-            content.innerHTML = '';
-            content.appendChild(fragment);
-            label.textContent = 'Note ' + text.replace(/[\[\]]/g, '');
-
-            currentTrigger = link;
-            popoverEl.hidden = false;
-            // Reset any prior positioning so dimensions can be measured clean
-            popoverEl.style.left = '0px';
-            popoverEl.style.top = '0px';
-
-            requestAnimationFrame(() => {
-                positionPopover(popoverEl, arrow, link);
-                popoverEl.classList.add('fn-visible');
-                setTimeout(() => { try { closeBtn.focus({ preventScroll: true }); } catch (_) { } }, 50);
-            });
+            showPopover(link, href, text.replace(/[\[\]]/g, ''));
         }, true);
     }
 

@@ -462,23 +462,9 @@ input:checked + .pg-slider:before { transform: translateX(20px); }
 
 html.pg-reader main p.pg-first-paragraph { display: block; }
 
-/* CSS ::first-letter fallback for paragraphs NOT handled by JS applyDropCap */
-html.pg-reader main p.pg-first-paragraph:not(.pg-drop-cap-active):not(.pg-no-dropcap)::first-letter {
-  float: left;
-  font-size: 5.6em;
-  line-height: 0.82;
-  padding-top: 8px;
-  padding-right: 14px;
-  padding-left: 0;
-  margin-top: 4px;
-  font-weight: 700;
-  color: var(--pg-accent);
-  font-family: 'Playfair Display', 'Georgia', 'Didot', 'Bodoni MT', serif !important;
-  letter-spacing: -0.02em;
-  text-transform: uppercase;
-}
-
-/* JS-injected drop cap span (handles leading punctuation correctly) */
+/* CSS ::first-letter fallback for paragraphs NOT handled by JS applyDropCap,
+   and JS-injected drop cap span (handles leading punctuation correctly) */
+html.pg-reader main p.pg-first-paragraph:not(.pg-drop-cap-active):not(.pg-no-dropcap)::first-letter,
 html.pg-reader main p.pg-drop-cap-active .pg-drop-cap {
   float: left;
   font-size: 5.6em;
@@ -543,7 +529,11 @@ html.pg-reader main p.pg-section-first:not(.pg-no-dropcap)::first-letter {
 .pg-reader .pg-thanks p::first-letter,
 .pg-reader .pg-yc-banner::first-letter,
 .pg-reader main p.pg-quote-para::first-letter,
-.pg-reader main ul.pg-more-info-list li::first-letter {
+.pg-reader main ul.pg-more-info-list li::first-letter,
+.pg-reader main p.pg-intro::first-letter,
+.pg-reader main a.pg-fn-ref::first-letter,
+.pg-articles-intro::first-letter,
+.pg-articles-intro p::first-letter {
   font-weight: inherit !important;
   color: inherit !important;
   font-size: inherit !important;
@@ -799,13 +789,6 @@ html.pg-reader main p.pg-section-first:not(.pg-no-dropcap)::first-letter {
   margin: 0.4em 50px 1.2em !important;
 }
 
-.pg-reader main p.pg-intro::first-letter {
-  font-weight: inherit !important;
-  color: inherit !important;
-  font-size: inherit !important;
-  float: none !important;
-}
-
 /* ── More Info Link Grid ──────────────────────────────── */
 
 .pg-reader main ul.pg-more-info-list {
@@ -876,7 +859,8 @@ html.pg-reader main p.pg-section-first:not(.pg-no-dropcap)::first-letter {
   margin: 1.5em 0;
 }
 
-.pg-reader code {
+.pg-reader code,
+.pg-reader tt {
   font-family: var(--pg-font-mono);
   font-size: 0.88em;
   background: var(--pg-code-bg);
@@ -889,14 +873,6 @@ html.pg-reader main p.pg-section-first:not(.pg-no-dropcap)::first-letter {
   padding: 0;
   border-radius: 0;
   font-size: inherit;
-}
-
-.pg-reader tt {
-  font-family: var(--pg-font-mono);
-  font-size: 0.88em;
-  background: var(--pg-code-bg);
-  padding: 0.15em 0.4em;
-  border-radius: 3px;
 }
 
 /* ── Lists ───────────────────────────────────────────────── */
@@ -1107,14 +1083,6 @@ html.pg-reader main p.pg-section-first:not(.pg-no-dropcap)::first-letter {
   outline: none;
 }
 
-/* Ensure fn-ref never gets first-letter drop-cap/bold treatment */
-.pg-reader main a.pg-fn-ref::first-letter {
-  font-weight: inherit !important;
-  color: inherit !important;
-  font-size: inherit !important;
-  float: none !important;
-}
-
 /* ── Strip hardcoded bgcolor attributes inside main ──────
    PG's essays contain <td bgcolor="#ffe799"> etc. that defeat theming.
    Blanket override so dark theme applies cleanly.                          */
@@ -1282,14 +1250,6 @@ html.pg-articles-layout .pg-reader h1 {
 
 .pg-articles-intro a:hover {
   text-decoration-color: var(--pg-accent);
-}
-
-.pg-articles-intro::first-letter,
-.pg-articles-intro p::first-letter {
-  font-weight: inherit !important;
-  color: inherit !important;
-  font-size: inherit !important;
-  float: none !important;
 }
 
 /* Essay list: clean vertical rows */
