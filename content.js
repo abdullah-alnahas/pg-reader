@@ -66,8 +66,18 @@
             }
             document.documentElement.classList.add('pg-reader-skip');
             document.documentElement.classList.remove('pg-reader-pending');
+            // Still show the toggle when disabled so the user can re-enable
+            // without opening the popup.
+            mountStandaloneToggle(result[STORAGE_KEY] !== false);
         });
     });
+
+    function mountStandaloneToggle(enabled) {
+        if (document.querySelector('.pg-toggle-container')) return;
+        const run = () => document.body && document.body.appendChild(createToggleSwitch(enabled));
+        if (document.body) run();
+        else document.addEventListener('DOMContentLoaded', run, { once: true });
+    }
 
     chrome.runtime.onMessage.addListener((msg) => {
         if (msg.action === 'toggle') window.location.reload();
@@ -339,9 +349,10 @@
         return btn;
     }
 
-    function createToggleSwitch() {
+    function createToggleSwitch(enabled = true) {
         const container = document.createElement('div');
         container.className = 'pg-toggle-container';
+        if (!enabled) container.classList.add('pg-toggle-container-off');
 
         const label = document.createElement('span');
         label.className = 'pg-toggle-label';
@@ -352,7 +363,7 @@
 
         const input = document.createElement('input');
         input.type = 'checkbox';
-        input.checked = true;
+        input.checked = enabled;
 
         const slider = document.createElement('span');
         slider.className = 'pg-slider';

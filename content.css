@@ -117,6 +117,47 @@ html.pg-reader[data-pg-theme="light"] {
   --pg-yc-border: #F4B075;
 }
 
+/* ── Tokens for Standalone Toggle (reader disabled) ──────── */
+/* Only a subset — enough to render the floating toggle switch on PG's
+   untransformed page so the user can re-enable the reader. */
+
+.pg-reader-skip {
+  --pg-nav-bg: #ff6600;
+  --pg-surface: #FFFEF9;
+  --pg-fg: #1D1D1F;
+  --pg-muted: #6E6E73;
+  --pg-border: #E5E5E5;
+  --pg-shadow-lg: 0 4px 12px rgba(0,0,0,0.06), 0 12px 28px rgba(0,0,0,0.04);
+}
+
+@media (prefers-color-scheme: dark) {
+  .pg-reader-skip:not([data-pg-theme="light"]) {
+    --pg-nav-bg: #E05E00;
+    --pg-surface: #181815;
+    --pg-fg: #ECE9DF;
+    --pg-muted: #B0ADA2;
+    --pg-border: #3A3835;
+    --pg-shadow-lg: 0 4px 12px rgba(0,0,0,0.35), 0 12px 28px rgba(0,0,0,0.25);
+  }
+}
+
+html.pg-reader-skip[data-pg-theme="dark"] {
+  --pg-nav-bg: #E05E00;
+  --pg-surface: #161614;
+  --pg-fg: #E0DED8;
+  --pg-muted: #8E8E93;
+  --pg-border: #2A2A28;
+  --pg-shadow-lg: 0 4px 12px rgba(0,0,0,0.3), 0 12px 28px rgba(0,0,0,0.2);
+}
+
+html.pg-reader-skip[data-pg-theme="light"] {
+  --pg-nav-bg: #ff6600;
+  --pg-surface: #FFFEF9;
+  --pg-fg: #1D1D1F;
+  --pg-muted: #6E6E73;
+  --pg-border: #E5E5E5;
+}
+
 /* ── Body baseline (ensures dark vars apply over PG site's own body styles) */
 
 html.pg-reader {
