@@ -188,7 +188,8 @@
         }
 
         const isArticlesPage = /\/articles(\.html?)?$/.test(location.pathname);
-        if (isArticlesPage) document.documentElement.classList.add('pg-articles-layout');
+        const isIndexPage = /\/ind(\.html?)?$/.test(location.pathname);
+        if (isArticlesPage || isIndexPage) document.documentElement.classList.add('pg-articles-layout');
 
         const sidebarLinks = extractNavLinks(sidebarTd);
         const main = createMain(contentTd);
@@ -202,14 +203,16 @@
         cleanupTitleImages(main);
         enhanceImages(main);
         styleBlockquotes(main);
-        if (!isArticlesPage) handleYcBanner(main);
+        if (!isArticlesPage && !isIndexPage) handleYcBanner(main);
         resetFontTags(main);
 
         // Date must be extracted BEFORE drop cap (otherwise first letter span breaks month regex)
-        const essayDate = isArticlesPage ? null : extractEssayDate(main);
+        const essayDate = (isArticlesPage || isIndexPage) ? null : extractEssayDate(main);
 
         if (isArticlesPage) {
             enhanceArticlesLayout(main);
+        } else if (isIndexPage) {
+            enhanceIndexLayout(main);
         } else {
             wrapThanksSection(main);
             collectThanksAppendix(main, contentTd);
@@ -225,14 +228,14 @@
             applyDropCap(main);
         }
 
-        const readMins = isArticlesPage ? null : calculateReadingTime(main);
+        const readMins = (isArticlesPage || isIndexPage) ? null : calculateReadingTime(main);
         const metaLine = createMetaLine(readMins, essayDate);
 
         const titleArea = document.createElement('div');
         titleArea.className = 'pg-title-area';
         const h1 = main.querySelector('h1');
         if (h1) titleArea.appendChild(h1);
-        if (!isArticlesPage) titleArea.appendChild(metaLine);
+        if (!isArticlesPage && !isIndexPage) titleArea.appendChild(metaLine);
         main.insertBefore(titleArea, main.firstChild);
 
         mountPageChrome(main, sidebarLinks, readMins);
@@ -447,8 +450,49 @@
             });
         };
         // Unwrap innermost first: ximg is nested inside xa on startupfunding.html.
+        // xfont same trick on info.html — swallows trailing email address.
         unwrapAll('ximg');
         unwrapAll('xa');
+        unwrapAll('xfont');
+
+        // Unwrap layout tables — single-column tables used only for width-capping
+        // the content column. bio.html / info.html / ind.html nest their entire
+        // body inside <table width="435"><tr><td>…</td></tr></table>.
+        let unwrappedTables = 0;
+        while (unwrappedTables < 4) {
+            const tables = Array.from(main.children).filter(c => c.tagName === 'TABLE');
+            let did = false;
+            for (const t of tables) {
+                const trs = t.querySelectorAll(':scope > tbody > tr, :scope > tr');
+                const dataTds = Array.from(trs).flatMap(tr =>
+                    Array.from(tr.children).filter(c => c.tagName === 'TD' &&
+                        (c.textContent.trim() || c.querySelector('img, p, ul, ol')))
+                );
+                if (dataTds.length !== 1) continue;
+                const td = dataTds[0];
+                const frag = document.createDocumentFragment();
+                while (td.firstChild) frag.appendChild(td.firstChild);
+                t.parentNode.insertBefore(frag, t);
+                t.remove();
+                did = true;
+                unwrappedTables++;
+            }
+            if (!did) break;
+        }
+
+        // Strip layout-spacer and bullet-decoration images. PG uses these as
+        // table shims (trans_1x1.gif) and as per-entry bullet graphics
+        // (japanese-translation-1.gif, the-reddits-2.gif) that clutter
+        // quo.html / kedrosky.html with hundreds of repeats.
+        main.querySelectorAll('img').forEach(img => {
+            const src = img.getAttribute('src') || '';
+            const w = parseInt(img.getAttribute('width') || '0', 10);
+            const h = parseInt(img.getAttribute('height') || '0', 10);
+            const alt = (img.alt || '').trim();
+            const isSpacer = /trans_1x1|spacer(?:_|\.)|\/1x1\.gif/i.test(src);
+            const isTinyDecoration = w > 0 && h > 0 && w <= 16 && h <= 16 && !alt;
+            if (isSpacer || isTinyDecoration) img.remove();
+        });
 
         // Strip leading BRs and empty text nodes
         while (main.firstChild) {
@@ -942,9 +986,14 @@
             // remove slug-matches when they look like a banner (height ≤ 40px) or
             // their alt matches the page title — so photos and diagrams survive.
             const h = parseInt(img.getAttribute('height') || '0', 10);
+            const alt = (img.alt || '').trim();
             const isBannerSized = h > 0 && h <= 40;
             const slugRemovable = matchesSlug && (matchesTitle || isBannerSized);
-            if (matchesTitle || slugRemovable || isSiteHeader) img.remove();
+            // Any very-short image with meaningful alt text is almost always a
+            // PG text-banner (e.g. raqs-4.gif, "Rarely-Asked Questions"). Strip
+            // even when the filename doesn't match the page slug.
+            const isTextBanner = h > 0 && h <= 22 && alt.length > 3 && /[A-Za-z]/.test(alt);
+            if (matchesTitle || slugRemovable || isSiteHeader || isTextBanner) img.remove();
         });
     }
 
@@ -1529,17 +1578,25 @@
     // Returns true if an element looks like a PG YC/Hacker-News promotional banner.
     function isYcElement(el) {
         const t = el.textContent || '';
+        // YC / HN banners are short promo blocks. Anything longer is essay body
+        // that just happens to mention YC (e.g. bio.html's "In 2005 he started
+        // Y Combinator..." would otherwise get mis-classified as a banner).
+        if (t.length > 260) return false;
         const linkHrefs = Array.from(el.querySelectorAll('a[href]'))
             .map(a => a.getAttribute('href') || '');
+        const hasYcLink = linkHrefs.some(h => /ycombinator\.com|news\.ycombinator/i.test(h));
         const hasYcMark =
             t.includes('Y Combinator') || t.includes('ycombinator') ||
-            t.includes('Hacker News') || t.includes('hacker news') ||
-            linkHrefs.some(h => /ycombinator\.com|news\.ycombinator/i.test(h));
+            t.includes('Hacker News') || t.includes('hacker news') || hasYcLink;
+        const strictPhrase =
+            /want to start a startup/i.test(t) ||
+            /get funded by\s+Y\s*Combinator/i.test(t) ||
+            /apply to\s+Y\s*Combinator/i.test(t) ||
+            /(Hacker News|news\.ycombinator)\s+was\s+originally/i.test(t);
         const hasYcContext =
             t.includes('funded') || t.includes('startup') ||
-            t.includes('apply') || t.includes('build things') ||
-            t.includes('Hacker News') || t.includes('hacker news');
-        return hasYcMark && hasYcContext;
+            t.includes('apply') || t.includes('build things');
+        return hasYcMark && (strictPhrase || (hasYcContext && hasYcLink));
     }
 
     // Replaces a raw YC banner element with a clean themed <div>.
@@ -1863,6 +1920,39 @@
             });
             main.appendChild(ul);
         }
+    }
+
+    // ind.html: flat list of <a><br> entries (alphabetical / chronological). No
+    // table rows, so enhanceArticlesLayout can't process it. Extract every
+    // top-level link into pg-essay-list for the same rendered look as articles.
+    function enhanceIndexLayout(main) {
+        const anchors = Array.from(main.querySelectorAll('a[href]')).filter(a => {
+            const t = a.textContent.replace(/\s+/g, ' ').trim();
+            return t.length >= 2;
+        });
+        // Wipe the existing unstructured body, keep h1/title area.
+        Array.from(main.childNodes).forEach(n => {
+            if (n.nodeType === Node.ELEMENT_NODE &&
+                (n.tagName === 'H1' || n.classList?.contains('pg-title-area'))) return;
+            n.remove();
+        });
+        if (anchors.length === 0) return;
+        const ul = document.createElement('ul');
+        ul.className = 'pg-essay-list';
+        const seen = new Set();
+        anchors.forEach(a => {
+            if (seen.has(a.href)) return;
+            seen.add(a.href);
+            const li = document.createElement('li');
+            li.className = 'pg-essay-item';
+            const link = document.createElement('a');
+            link.href = a.href;
+            link.className = 'pg-essay-link';
+            link.textContent = a.textContent.replace(/\s+/g, ' ').trim();
+            li.appendChild(link);
+            ul.appendChild(li);
+        });
+        main.appendChild(ul);
     }
 
     /* ── Drop Cap ──────────────────────────────────────────── */
