@@ -8,20 +8,19 @@
 <body>
   <div class="popup">
     <div class="popup-header">
-      <span class="logo">PG</span>
       <div class="popup-title-group">
         <span class="title">PG Reader</span>
         <span class="subtitle">paulgraham.com</span>
       </div>
+      <button id="toggle" class="reader-toggle" aria-pressed="true" aria-label="Toggle reader mode">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" aria-hidden="true">
+          <path d="M12 6v13"            stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M12 6C10 5 6 4.8 4 5.5v12.5c2-.7 6-.5 8 .5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M12 6c2-1 6-1.2 8-.5v12.5c-2-.7-6-.5-8 .5"   stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
     </div>
-    <div class="popup-divider"></div>
-    <label class="toggle-row">
-      <span class="toggle-label">Enabled</span>
-      <span class="toggle-switch">
-        <input type="checkbox" id="toggle" checked>
-        <span class="slider"></span>
-      </span>
-    </label>
+    <p class="status"><span id="status-text">Reader on</span></p>
   </div>
   <script src="popup.js"></script>
 </body>

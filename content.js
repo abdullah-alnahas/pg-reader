@@ -370,18 +370,19 @@
         svg.setAttribute('fill', 'none');
         svg.setAttribute('aria-hidden', 'true');
 
-        // Three horizontal lines (reading icon) — last one shorter, suggests paragraph text.
-        const mk = (d) => {
+        // Open-book icon — two pages split at the spine. More expressive than
+        // generic horizontal lines; reads unambiguously as "reading mode".
+        const mk = (d, attrs) => {
             const p = document.createElementNS('http://www.w3.org/2000/svg', 'path');
             p.setAttribute('d', d);
-            p.setAttribute('stroke', 'currentColor');
-            p.setAttribute('stroke-width', '1.8');
-            p.setAttribute('stroke-linecap', 'round');
+            Object.entries(attrs).forEach(([k, v]) => p.setAttribute(k, v));
             return p;
         };
-        svg.appendChild(mk('M5 7h14'));
-        svg.appendChild(mk('M5 12h14'));
-        svg.appendChild(mk('M5 17h9'));
+        const stroke = { stroke: 'currentColor', 'stroke-width': '1.6', 'stroke-linecap': 'round', 'stroke-linejoin': 'round', fill: 'none' };
+        // Spine + two pages curving outward.
+        svg.appendChild(mk('M12 6v13', stroke));
+        svg.appendChild(mk('M12 6C10 5 6 4.8 4 5.5v12.5c2-.7 6-.5 8 .5', stroke));
+        svg.appendChild(mk('M12 6c2-1 6-1.2 8-.5v12.5c-2-.7-6-.5-8 .5', stroke));
         btn.appendChild(svg);
 
         btn.addEventListener('click', () => {
@@ -731,7 +732,7 @@
         }, { passive: true });
 
         btn.addEventListener('click', () => {
-            window.scrollTo({ top: 0, behavior: 'smooth' });
+            window.scrollTo({ top: 0, behavior: 'auto' });
         });
     }
 

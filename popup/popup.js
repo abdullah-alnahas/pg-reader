@@ -1,12 +1,21 @@
 const STORAGE_KEY = 'pg-reader-enabled';
-const toggle = document.getElementById('toggle');
+const btn = document.getElementById('toggle');
+const statusText = document.getElementById('status-text');
+
+function render(enabled) {
+    btn.setAttribute('aria-pressed', String(enabled));
+    btn.setAttribute('aria-label', enabled ? 'Disable reader mode' : 'Enable reader mode');
+    statusText.textContent = enabled ? 'Reader on' : 'Reader off';
+}
 
 chrome.storage.sync.get([STORAGE_KEY], (result) => {
-    toggle.checked = result[STORAGE_KEY] !== false;
+    render(result[STORAGE_KEY] !== false);
 });
 
-toggle.addEventListener('change', () => {
-    chrome.storage.sync.set({ [STORAGE_KEY]: toggle.checked }, () => {
+btn.addEventListener('click', () => {
+    const next = btn.getAttribute('aria-pressed') !== 'true';
+    render(next);
+    chrome.storage.sync.set({ [STORAGE_KEY]: next }, () => {
         chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
             if (tabs[0]?.id) {
                 chrome.tabs.sendMessage(tabs[0].id, { action: 'toggle' }, () => {

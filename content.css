@@ -544,7 +544,7 @@ html.pg-reader-skip   { opacity: 1; }
   border-radius: 50%;
   background: var(--pg-surface);
   border: 1px solid var(--pg-border);
-  color: var(--pg-fg);
+  color: var(--pg-muted);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -569,7 +569,7 @@ html.pg-reader-skip   { opacity: 1; }
 }
 
 .pg-back-to-top:hover {
-  color: var(--pg-accent);
+  color: var(--pg-fg);
   border-color: var(--pg-border-strong);
 }
 
