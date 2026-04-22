@@ -63,13 +63,13 @@
 
 @media (prefers-color-scheme: dark) {
   .pg-reader:not([data-pg-theme="light"]) {
-    --pg-bg: #141922;
-    --pg-surface: #1B212B;
-    --pg-surface-elev: #232A36;
-    --pg-fg: #E6E1D0;
-    --pg-muted: #8F95A0;
-    --pg-border: #262D38;
-    --pg-border-strong: #3A4250;
+    --pg-bg: #181D26;
+    --pg-surface: #1F2530;
+    --pg-surface-elev: #28303C;
+    --pg-fg: #D6CFBB;
+    --pg-muted: #868C97;
+    --pg-border: #2B323E;
+    --pg-border-strong: #3E4654;
     --pg-accent: #D89A5E;
     --pg-accent-hover: #E8AC70;
     --pg-accent-soft: rgba(216, 154, 94, 0.14);
@@ -90,13 +90,13 @@
 /* ── Forced Dark Mode (user override) ────────────────────── */
 
 html.pg-reader[data-pg-theme="dark"] {
-  --pg-bg: #141922;
-  --pg-surface: #1B212B;
-  --pg-surface-elev: #232A36;
-  --pg-fg: #E6E1D0;
-  --pg-muted: #8F95A0;
-  --pg-border: #262D38;
-  --pg-border-strong: #3A4250;
+  --pg-bg: #181D26;
+  --pg-surface: #1F2530;
+  --pg-surface-elev: #28303C;
+  --pg-fg: #D6CFBB;
+  --pg-muted: #868C97;
+  --pg-border: #2B323E;
+  --pg-border-strong: #3E4654;
   --pg-accent: #D89A5E;
   --pg-accent-hover: #E8AC70;
   --pg-accent-soft: rgba(216, 154, 94, 0.14);
@@ -154,10 +154,10 @@ html.pg-reader[data-pg-theme="light"] {
 @media (prefers-color-scheme: dark) {
   .pg-reader-skip:not([data-pg-theme="light"]) {
     --pg-accent: #D89A5E;
-    --pg-surface: #1B212B;
-    --pg-fg: #E6E1D0;
-    --pg-muted: #8F95A0;
-    --pg-border: #262D38;
+    --pg-surface: #1F2530;
+    --pg-fg: #D6CFBB;
+    --pg-muted: #868C97;
+    --pg-border: #2B323E;
     --pg-nav-bg: var(--pg-accent);
     --pg-shadow-lg: 0 4px 12px rgba(0,0,0,0.35), 0 12px 28px rgba(0,0,0,0.25);
   }
@@ -165,10 +165,10 @@ html.pg-reader[data-pg-theme="light"] {
 
 html.pg-reader-skip[data-pg-theme="dark"] {
   --pg-accent: #D89A5E;
-  --pg-surface: #1B212B;
-  --pg-fg: #E6E1D0;
-  --pg-muted: #8F95A0;
-  --pg-border: #262D38;
+  --pg-surface: #1F2530;
+  --pg-fg: #D6CFBB;
+  --pg-muted: #868C97;
+  --pg-border: #2B323E;
   --pg-nav-bg: var(--pg-accent);
   --pg-shadow-lg: 0 4px 12px rgba(0,0,0,0.3), 0 12px 28px rgba(0,0,0,0.2);
 }
@@ -194,6 +194,18 @@ html.pg-reader body {
   margin: 0 !important;
   padding: 0 !important;
 }
+
+/* Themed text selection — amber tint that harmonises with accent family.
+   Stronger than accent-soft so selection is visible, but not screaming. */
+.pg-reader ::selection    { background: rgba(178, 106, 43, 0.28); color: var(--pg-fg); }
+.pg-reader ::-moz-selection { background: rgba(178, 106, 43, 0.28); color: var(--pg-fg); }
+
+@media (prefers-color-scheme: dark) {
+  html.pg-reader:not([data-pg-theme="light"]) ::selection      { background: rgba(216, 154, 94, 0.32); color: var(--pg-fg); }
+  html.pg-reader:not([data-pg-theme="light"]) ::-moz-selection { background: rgba(216, 154, 94, 0.32); color: var(--pg-fg); }
+}
+html.pg-reader[data-pg-theme="dark"] ::selection      { background: rgba(216, 154, 94, 0.32); color: var(--pg-fg); }
+html.pg-reader[data-pg-theme="dark"] ::-moz-selection { background: rgba(216, 154, 94, 0.32); color: var(--pg-fg); }
 
 /* ── FOUC Prevention ─────────────────────────────────────── */
 
@@ -414,15 +426,16 @@ html.pg-reader-skip   { opacity: 1; }
   margin: 0 auto;
   padding: 0 24px;
   height: 56px;
-  gap: 20px;
+  gap: 12px;
 }
 
 .pg-topnav-links {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
-  gap: 2px;
-  flex: 1;
+  gap: 0;
+  margin-left: auto;
+  flex: 0 1 auto;
+  min-width: 0;
   overflow-x: auto;
   scrollbar-width: none;
 }
@@ -432,14 +445,15 @@ html.pg-reader-skip   { opacity: 1; }
 .pg-topnav-link {
   color: var(--pg-muted);
   text-decoration: none;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 500;
-  padding: 6px 10px;
+  padding: 6px 7px;
   border-radius: 6px;
   display: flex;
   align-items: center;
   white-space: nowrap;
   letter-spacing: 0.01em;
+  flex: 0 0 auto;
 }
 
 .pg-topnav-link:hover { color: var(--pg-fg); }
@@ -461,6 +475,8 @@ html.pg-reader-skip   { opacity: 1; }
   max-width: 860px;
   margin: 0 auto;
   background: var(--pg-surface);
+  border-radius: 8px;
+  padding-bottom: 96px;
 }
 
 /* ── Floating Toggle Switch ──────────────────────────────── */
@@ -573,6 +589,8 @@ input:checked + .pg-slider:before { transform: translateX(20px); }
 .pg-title-area {
   background: var(--pg-bg);
   padding: 72px 50px 32px;
+  border-top-left-radius: 8px;
+  border-top-right-radius: 8px;
 }
 
 .pg-reader h1 {
@@ -598,6 +616,13 @@ input:checked + .pg-slider:before { transform: translateX(20px); }
 }
 
 .pg-meta-date { font-weight: 500; }
+
+.pg-meta-rev {
+  font-weight: 400;
+  font-style: italic;
+  opacity: 0.8;
+  letter-spacing: 0.01em;
+}
 
 .pg-meta-dot {
   opacity: 0.3;
@@ -638,12 +663,8 @@ html.pg-reader main p.pg-section-first {
 }
 
 /* Only the very first paragraph gets the journal-style drop cap.
-   Section-first and all others get the subtle bold+accent first-letter treatment
-   from the `.pg-reader main p + p::first-letter` rule below. */
-html.pg-reader main p.pg-section-first:not(.pg-no-dropcap)::first-letter {
-  font-weight: 800;
-  color: var(--pg-accent);
-}
+   Subsequent paragraphs stay plain — per-paragraph first-letter accents
+   were producing visual noise and mis-styling leading punctuation like "(". */
 
 /* ── Content Body ────────────────────────────────────────── */
 
@@ -669,13 +690,7 @@ html.pg-reader main p.pg-section-first:not(.pg-no-dropcap)::first-letter {
   padding-top: 1.15em;
 }
 
-/* First letter of every paragraph (after the first): bold + accent — subtle editorial hint.
-   Explicitly excluded: Notes and Thanks paragraphs (punctuation/labels would get styled). */
-.pg-reader main p:not(.pg-first-paragraph):not(.pg-drop-cap-active):not(.pg-no-dropcap)::first-letter {
-  font-weight: 700;
-  color: var(--pg-accent);
-}
-
+/* Legacy resets (kept harmless — broad first-letter accent removed above). */
 .pg-reader .pg-notes p::first-letter,
 .pg-reader .pg-thanks p::first-letter,
 .pg-reader .pg-yc-banner::first-letter,
@@ -1135,10 +1150,11 @@ html.pg-reader main p.pg-section-first:not(.pg-no-dropcap)::first-letter {
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  background: var(--pg-surface);
-  border: 1px solid var(--pg-border);
+  background: var(--pg-surface-elev);
+  border: 1px solid var(--pg-border-strong);
+  border-left: 3px solid var(--pg-accent);
   border-radius: 10px;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.14), 0 2px 8px rgba(0,0,0,0.08);
+  box-shadow: 0 18px 44px rgba(0,0,0,0.22), 0 4px 14px rgba(0,0,0,0.14);
   font-size: 0.9rem;
   line-height: 1.6;
   color: var(--pg-fg);
@@ -1164,8 +1180,8 @@ html.pg-reader main p.pg-section-first:not(.pg-no-dropcap)::first-letter {
   position: absolute;
   width: 12px;
   height: 12px;
-  background: var(--pg-surface);
-  border: 1px solid var(--pg-border);
+  background: var(--pg-surface-elev);
+  border: 1px solid var(--pg-border-strong);
   transform: rotate(45deg);
   pointer-events: none;
 }
@@ -1530,7 +1546,7 @@ html.pg-articles-layout .pg-reader h1 {
 
 /* ── Responsive: Tablet ──────────────────────────────────── */
 
-@media (max-width: 768px) {
+@media (max-width: 1100px) {
   .pg-topnav-link       { display: none; }
   .pg-topnav-hamburger  { display: flex !important; }
 

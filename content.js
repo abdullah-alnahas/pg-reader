@@ -229,8 +229,6 @@
         if (!isArticlesPage) titleArea.appendChild(metaLine);
         main.insertBefore(titleArea, main.firstChild);
 
-        if (!isArticlesPage) main.insertBefore(createBackLink(), titleArea);
-
         mountPageChrome(main, sidebarLinks, readMins);
     }
 
@@ -392,30 +390,22 @@
         return a;
     }
 
-    function createBackLink() {
-        const a = document.createElement('a');
-        a.href = '/articles.html';
-        a.className = 'pg-back-link';
-        a.textContent = '← Essays';
-        return a;
-    }
-
     function createBackToTopButton() {
         const btn = document.createElement('button');
         btn.className = 'pg-back-to-top';
         btn.setAttribute('aria-label', 'Back to top');
 
         const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-        svg.setAttribute('width', '16');
-        svg.setAttribute('height', '16');
-        svg.setAttribute('viewBox', '0 0 16 16');
+        svg.setAttribute('width', '18');
+        svg.setAttribute('height', '18');
+        svg.setAttribute('viewBox', '0 0 24 24');
         svg.setAttribute('fill', 'none');
         svg.setAttribute('aria-hidden', 'true');
 
         const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-        path.setAttribute('d', 'M8 12V4M4 7l4-4 4 4');
+        path.setAttribute('d', 'M12 19V5M5.5 11.5L12 5l6.5 6.5');
         path.setAttribute('stroke', 'currentColor');
-        path.setAttribute('stroke-width', '2');
+        path.setAttribute('stroke-width', '1.25');
         path.setAttribute('stroke-linecap', 'round');
         path.setAttribute('stroke-linejoin', 'round');
 
@@ -430,6 +420,22 @@
         while (contentTd.firstChild) {
             main.appendChild(contentTd.firstChild);
         }
+
+        // PG hides some link/image elements by prefixing the tag with "x" (<xa>, <ximg>).
+        // Browsers parse these as unknown inline elements with no self-close rule, so
+        // everything after them (Notes, footnotes, Thanks) ends up nested inside until
+        // a matching end tag — which never comes. Unwrap them, preserving children,
+        // so the tail content resurfaces as proper siblings of the essay body.
+        const unwrapAll = (selector) => {
+            main.querySelectorAll(selector).forEach(el => {
+                const parent = el.parentNode;
+                while (el.firstChild) parent.insertBefore(el.firstChild, el);
+                el.remove();
+            });
+        };
+        // Unwrap innermost first: ximg is nested inside xa on startupfunding.html.
+        unwrapAll('ximg');
+        unwrapAll('xa');
 
         // Strip leading BRs and empty text nodes
         while (main.firstChild) {
@@ -458,16 +464,31 @@
         const div = document.createElement('div');
         div.className = 'pg-meta';
 
-        if (date) {
-            const dateSpan = document.createElement('span');
-            dateSpan.className = 'pg-meta-date';
-            dateSpan.textContent = date;
-            div.appendChild(dateSpan);
-
+        const addDot = () => {
             const dot = document.createElement('span');
             dot.className = 'pg-meta-dot';
             dot.textContent = '·';
             div.appendChild(dot);
+        };
+
+        if (date) {
+            const primary = typeof date === 'string' ? date : date.date;
+            const rev = typeof date === 'string' ? null : date.rev;
+
+            const dateSpan = document.createElement('span');
+            dateSpan.className = 'pg-meta-date';
+            dateSpan.textContent = primary;
+            div.appendChild(dateSpan);
+
+            if (rev) {
+                addDot();
+                const revSpan = document.createElement('span');
+                revSpan.className = 'pg-meta-rev';
+                revSpan.textContent = 'rev. ' + rev;
+                div.appendChild(revSpan);
+            }
+
+            addDot();
         }
 
         const time = document.createElement('span');
@@ -726,26 +747,42 @@
             'July', 'August', 'September', 'October', 'November', 'December',
             'Jan', 'Feb', 'Mar', 'Apr', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
         ];
+        const monthAlt = all.join('|');
         // Matches "January 2008", "29 January 2008", or "January 29, 2008"
-        const regex = new RegExp(
-            '(?:(\\d{1,2})\\s+)?(' + all.join('|') + ')(?:\\s+(\\d{1,2}),?)?\\s+(\\d{4})',
+        const dateRe = new RegExp(
+            '(?:(\\d{1,2})\\s+)?(' + monthAlt + ')(?:\\s+(\\d{1,2}),?)?\\s+(\\d{4})',
             'i'
         );
+        // Matches ", rev <date>" addendum immediately after a primary date (used on 6631327.html).
+        const revRe = new RegExp(
+            '\\s*,?\\s*rev\\.?\\s+(?:(\\d{1,2})\\s+)?(' + monthAlt + ')(?:\\s+(\\d{1,2}),?)?\\s+(\\d{4})',
+            'i'
+        );
+
+        const format = (dayB, month, dayA, year) => {
+            if (dayB) return dayB + ' ' + month + ' ' + year;
+            if (dayA) return month + ' ' + dayA + ', ' + year;
+            return month + ' ' + year;
+        };
 
         const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT, null);
         let node;
         while ((node = walker.nextNode())) {
-            const match = node.textContent.match(regex);
-            if (match) {
-                const dayBefore = match[1];
-                const month = match[2];
-                const dayAfter = match[3];
-                const year = match[4];
-                node.textContent = node.textContent.replace(match[0], '').trim();
-                if (dayBefore) return dayBefore + ' ' + month + ' ' + year;
-                if (dayAfter) return month + ' ' + dayAfter + ', ' + year;
-                return month + ' ' + year;
+            const m = node.textContent.match(dateRe);
+            if (!m) continue;
+            const primary = format(m[1], m[2], m[3], m[4]);
+            // Does a "rev ..." addendum follow? Must begin at end of primary match.
+            const afterIdx = m.index + m[0].length;
+            const tail = node.textContent.slice(afterIdx);
+            const r = tail.match(revRe);
+            let rev = null;
+            let toStrip = m[0];
+            if (r && r.index === 0) {
+                rev = format(r[1], r[2], r[3], r[4]);
+                toStrip = m[0] + r[0];
             }
+            node.textContent = node.textContent.replace(toStrip, '').trim();
+            return rev ? { date: primary, rev } : primary;
         }
         return null;
     }
@@ -1504,12 +1541,14 @@
         section.appendChild(heading);
 
         // Walk from first note paragraph forward, but skip any .pg-thanks
-        // section (extracted by wrapThanksSection) so it stays separate.
+        // or .pg-related section (extracted earlier) so they stay separate
+        // and don't get pulled into the Notes section (and thus its popups).
         let node = directParagraphs[noteStartIndex];
         while (node) {
             const next = node.nextSibling;
             if (node.nodeType === Node.ELEMENT_NODE &&
-                node.classList?.contains('pg-thanks')) {
+                (node.classList?.contains('pg-thanks') ||
+                 node.classList?.contains('pg-related'))) {
                 node = next;
                 continue;
             }
@@ -1726,7 +1765,7 @@
 
         const raw = textNode.textContent;
         // Find first alphanumeric character, skipping leading punctuation/quotes/spaces
-        const match = raw.match(/^(\s*[\u201C\u2018"'\u00AB\xAB\s]*)(\S)/);
+        const match = raw.match(/^([\s\u201C\u2018"'\u00AB\xAB([{]*)(\S)/);
         if (!match) return;
 
         const leadingPunct = match[1];
