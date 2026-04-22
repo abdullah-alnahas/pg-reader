@@ -26,6 +26,9 @@
   --pg-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.03);
   --pg-shadow-lg: 0 4px 12px rgba(0,0,0,0.06), 0 12px 28px rgba(0,0,0,0.04);
   --pg-notes-bg: #f7f6f0;
+  --pg-yc-bg: #FFE2BF;
+  --pg-yc-fg: #6A3B14;
+  --pg-yc-border: #F4B075;
 
   --pg-font: "Montserrat", "Avenir Next", "Avenir", "Helvetica Neue", Helvetica, Arial, sans-serif;
   --pg-font-mono: 'SFMono-Regular', 'Menlo', 'Consolas', monospace;
@@ -65,6 +68,9 @@
     --pg-shadow: 0 1px 3px rgba(0,0,0,0.25), 0 4px 12px rgba(0,0,0,0.2);
     --pg-shadow-lg: 0 4px 12px rgba(0,0,0,0.35), 0 12px 28px rgba(0,0,0,0.25);
     --pg-notes-bg: #14130F;
+    --pg-yc-bg: #3A2512;
+    --pg-yc-fg: #F2D3A7;
+    --pg-yc-border: #7A4A1F;
   }
 }
 
@@ -86,6 +92,9 @@ html.pg-reader[data-pg-theme="dark"] {
   --pg-shadow: 0 1px 3px rgba(0,0,0,0.2), 0 4px 12px rgba(0,0,0,0.15);
   --pg-shadow-lg: 0 4px 12px rgba(0,0,0,0.3), 0 12px 28px rgba(0,0,0,0.2);
   --pg-notes-bg: #111110;
+  --pg-yc-bg: #33200F;
+  --pg-yc-fg: #EBCB9A;
+  --pg-yc-border: #6B4118;
 }
 
 /* ── Forced Light Mode (overrides system dark) ────────────── */
@@ -103,6 +112,9 @@ html.pg-reader[data-pg-theme="light"] {
   --pg-border: #E5E5E5;
   --pg-code-bg: #F5F5F3;
   --pg-notes-bg: #f7f6f0;
+  --pg-yc-bg: #FFE2BF;
+  --pg-yc-fg: #6A3B14;
+  --pg-yc-border: #F4B075;
 }
 
 /* ── Body baseline (ensures dark vars apply over PG site's own body styles) */
@@ -759,10 +771,10 @@ html.pg-reader main p.pg-section-first:not(.pg-no-dropcap)::first-letter {
   display: block;
   margin: 0;
   padding: 14px 50px;
-  background: var(--pg-title-bg);
-  border-bottom: 1px solid var(--pg-border);
+  background: var(--pg-yc-bg);
+  border-bottom: 1px solid var(--pg-yc-border);
   font-size: 0.88em;
-  color: var(--pg-muted);
+  color: var(--pg-yc-fg);
   line-height: 1.55;
   text-align: center;
   width: auto;
@@ -770,16 +782,16 @@ html.pg-reader main p.pg-section-first:not(.pg-no-dropcap)::first-letter {
 }
 
 .pg-reader .pg-yc-banner a {
-  color: var(--pg-accent) !important;
-  font-weight: 600;
-  text-decoration: none !important;
-  border-bottom: 1px solid var(--pg-accent-soft);
-  transition: border-color 120ms ease, color 120ms ease;
+  color: var(--pg-yc-fg) !important;
+  font-weight: 700;
+  text-decoration: underline !important;
+  text-underline-offset: 3px;
+  border-bottom: none;
+  transition: opacity 120ms ease;
 }
 
 .pg-reader .pg-yc-banner a:hover {
-  color: var(--pg-nav-bg) !important;
-  border-bottom-color: var(--pg-nav-bg);
+  opacity: 0.75;
 }
 
 /* ── YC Banner (bottom) — centered boxed card ──────────── */
@@ -790,16 +802,17 @@ html.pg-reader main p.pg-section-first:not(.pg-no-dropcap)::first-letter {
   max-width: 560px;
   text-align: center;
   padding: 1rem 1.5rem !important;
-  border: 1px solid var(--pg-border);
+  border: 1px solid var(--pg-yc-border);
   border-radius: 8px;
-  background: var(--pg-title-bg);
+  background: var(--pg-yc-bg);
+  color: var(--pg-yc-fg);
   box-shadow: none;
   transition: none;
 }
 
 .pg-reader .pg-yc-banner-bottom:hover {
   box-shadow: none;
-  background: var(--pg-title-bg);
+  background: var(--pg-yc-bg);
 }
 
 /* ── Body headings (promoted from standalone <b>) ──────── */
@@ -1186,11 +1199,11 @@ html.pg-reader main p.pg-section-first:not(.pg-no-dropcap)::first-letter {
 }
 
 .pg-reader .pg-yc-banner {
-  background: var(--pg-title-bg) !important;
+  background: var(--pg-yc-bg) !important;
 }
 
 .pg-reader .pg-yc-banner-bottom {
-  background: var(--pg-title-bg) !important;
+  background: var(--pg-yc-bg) !important;
 }
 
 .pg-reader .pg-yc-banner img[src*="spacer"],
@@ -1208,8 +1221,8 @@ html.pg-reader main p.pg-section-first:not(.pg-no-dropcap)::first-letter {
 }
 
 .pg-reader .pg-yc-banner a {
-  color: var(--pg-accent) !important;
-  font-weight: 600;
+  color: var(--pg-yc-fg) !important;
+  font-weight: 700;
 }
 
 /* ── Back Link ───────────────────────────────────────────── */
