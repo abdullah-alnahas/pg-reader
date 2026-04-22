@@ -1396,19 +1396,24 @@
             node = next;
         }
 
-        // Tag each paragraph with its note number. A note starts at "[N]" and
-        // continues until the next "[N+1]" / "Thanks to" / end-of-section.
+        // Tag each block child (p/blockquote/pre/ul/ol) with its note number.
+        // A note starts at a "[N]" paragraph and continues until the next
+        // "[N+1]" / "Thanks to" / end-of-section. Non-paragraph blocks
+        // (e.g. <blockquote>) inherit the current note's number.
         let currentNum = null;
-        Array.from(section.querySelectorAll(':scope > p')).forEach(p => {
-            const text = p.textContent.trim();
-            const startMatch = text.match(NOTE_START_RE);
-            if (startMatch) {
-                currentNum = startMatch[1];
-                p.dataset.noteStart = '1';
-            } else if (/^\s*Thanks to\b/i.test(text)) {
-                currentNum = null;
+        Array.from(section.children).forEach(el => {
+            if (el.tagName === 'H2') return;
+            if (el.tagName === 'P') {
+                const text = el.textContent.trim();
+                const startMatch = text.match(NOTE_START_RE);
+                if (startMatch) {
+                    currentNum = startMatch[1];
+                    el.dataset.noteStart = '1';
+                } else if (/^\s*Thanks to\b/i.test(text)) {
+                    currentNum = null;
+                }
             }
-            if (currentNum) p.dataset.noteNum = currentNum;
+            if (currentNum) el.dataset.noteNum = currentNum;
         });
 
         main.appendChild(section);
@@ -1974,16 +1979,18 @@
         // all paragraphs sharing data-note-num (a note can span multiple paras).
         if (notePara && notePara.dataset.noteNum) {
             const noteNum = notePara.dataset.noteNum;
-            const paras = [notePara];
+            const parts = [notePara];
             let sib = notePara.nextElementSibling;
-            while (sib && sib.tagName === 'P' &&
+            // Include any subsequent block (P, BLOCKQUOTE, PRE, UL, OL) that
+            // carries the same data-note-num and isn't a new note-start.
+            while (sib &&
                    sib.dataset.noteNum === noteNum &&
                    !sib.dataset.noteStart) {
-                paras.push(sib);
+                parts.push(sib);
                 sib = sib.nextElementSibling;
             }
-            paras.forEach((p, idx) => {
-                const clone = p.cloneNode(true);
+            parts.forEach((el, idx) => {
+                const clone = el.cloneNode(true);
                 if (idx === 0) stripLeadingNoteMarker(clone);
                 decorateFootnoteLinks(clone);
                 fragment.appendChild(clone);
