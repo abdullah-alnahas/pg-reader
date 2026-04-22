@@ -432,8 +432,8 @@ html.pg-reader-skip   { opacity: 1; }
 .pg-topnav-links {
   display: flex;
   align-items: center;
-  gap: 0;
-  margin-left: auto;
+  gap: 2px;
+  margin: 0 auto;
   flex: 0 1 auto;
   min-width: 0;
   overflow-x: auto;
