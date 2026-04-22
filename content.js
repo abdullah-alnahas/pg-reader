@@ -405,7 +405,7 @@
         const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
         path.setAttribute('d', 'M12 19V5M5.5 11.5L12 5l6.5 6.5');
         path.setAttribute('stroke', 'currentColor');
-        path.setAttribute('stroke-width', '1.25');
+        path.setAttribute('stroke-width', '1.6');
         path.setAttribute('stroke-linecap', 'round');
         path.setAttribute('stroke-linejoin', 'round');
 
@@ -1358,6 +1358,19 @@
     }
 
     function convertCourierFonts(container) {
+        // Bare <xmp> (deprecated pre-formatted) is used by PG for ASCII tables
+        // outside any courier <font> wrapper, e.g. the cap-table blocks in
+        // startupfunding.html. Convert these directly to <pre class="pg-code-block">
+        // so the extension's mono/monospace code styling applies.
+        container.querySelectorAll('xmp').forEach(xmp => {
+            // Skip if already inside a courier <font> — handled below.
+            if (xmp.closest('font') && /courier/i.test(xmp.closest('font').getAttribute('face') || '')) return;
+            const pre = document.createElement('pre');
+            pre.className = 'pg-code-block';
+            pre.textContent = (xmp.textContent || '').replace(/^\s*\n+/, '').replace(/\n+\s*$/, '');
+            xmp.replaceWith(pre);
+        });
+
         const courierFonts = Array.from(container.querySelectorAll('font'))
             .filter(f => /courier/i.test(f.getAttribute('face') || ''));
         courierFonts.forEach(f => {

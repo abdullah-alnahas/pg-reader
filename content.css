@@ -473,10 +473,12 @@ html.pg-reader-skip   { opacity: 1; }
 
 .pg-reader main {
   max-width: 860px;
-  margin: 0 auto;
+  margin: 24px auto 0;
   background: var(--pg-surface);
-  border-radius: 8px;
+  border: 1px solid var(--pg-border);
+  border-radius: 10px;
   padding-bottom: 96px;
+  overflow: hidden;
 }
 
 /* ── Floating Toggle Switch ──────────────────────────────── */
@@ -587,10 +589,8 @@ input:checked + .pg-slider:before { transform: translateX(20px); }
 /* ── Title Area ──────────────────────────────────────────── */
 
 .pg-title-area {
-  background: var(--pg-bg);
+  background: var(--pg-surface);
   padding: 72px 50px 32px;
-  border-top-left-radius: 8px;
-  border-top-right-radius: 8px;
 }
 
 .pg-reader h1 {
