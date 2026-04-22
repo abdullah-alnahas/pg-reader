@@ -107,6 +107,10 @@ html.pg-reader[data-pg-theme="light"] {
 
 /* ── Body baseline (ensures dark vars apply over PG site's own body styles) */
 
+html.pg-reader {
+  scrollbar-gutter: stable both-edges;
+}
+
 html.pg-reader body {
   background: var(--pg-bg) !important;
   color: var(--pg-fg) !important;
