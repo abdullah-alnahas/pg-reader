@@ -1103,6 +1103,75 @@ html.pg-reader main p.pg-section-first {
   border-radius: 4px;
 }
 
+/* ── Figures (standalone images with optional caption) ─── */
+/* Image lives alone in its paragraph → promoted to <figure> for Common
+   Region + Proximity with its alt-text caption, matching the 50px body
+   padding so it sits in the same column as the text. */
+.pg-reader main figure.pg-figure {
+  margin: 2em 50px;
+  padding: 0;
+  text-align: center;
+}
+
+.pg-reader main figure.pg-figure img {
+  display: inline-block;
+  max-width: 100%;
+  width: auto;
+  height: auto;
+  margin: 0;
+  border-radius: 6px;
+  border: 1px solid var(--pg-border);
+  transition: border-color 180ms ease, transform 180ms ease;
+}
+
+.pg-reader main figure.pg-figure a.pg-img-link {
+  display: inline-block;
+  line-height: 0;
+  text-decoration: none;
+  border: 0;
+}
+
+/* Image links don't need the external-link arrow — the click target is the
+   image itself; arrow near it becomes visual noise. Border lift on hover
+   communicates the affordance without chrome. */
+.pg-reader main figure.pg-figure a.pg-img-link::after,
+.pg-reader main figure.pg-figure a.pg-img-link::before {
+  content: none !important;
+  display: none !important;
+}
+
+.pg-reader main figure.pg-figure a.pg-img-link:hover img,
+.pg-reader main figure.pg-figure a.pg-img-link:focus-visible img {
+  border-color: var(--pg-accent);
+}
+
+.pg-reader main figure.pg-figure figcaption {
+  margin: 10px auto 0;
+  max-width: 680px;
+  font-size: 0.82em;
+  font-style: italic;
+  font-weight: 400;
+  color: var(--pg-muted);
+  line-height: 1.5;
+  padding: 0 8px;
+  letter-spacing: 0.01em;
+}
+
+/* PG's content images are overwhelmingly light-bg scans (diplomas, book
+   covers, diagrams). On the deep navy dark theme they glare. Dim brightness
+   and nudge contrast — leaves photos/illustrations readable without
+   desaturating them. */
+@media (prefers-color-scheme: dark) {
+  html.pg-reader:not([data-pg-theme="light"]) main figure.pg-figure img,
+  html.pg-reader:not([data-pg-theme="light"]) main img:not(.pg-title-img) {
+    filter: brightness(0.86) contrast(1.02);
+  }
+}
+html.pg-reader[data-pg-theme="dark"] main figure.pg-figure img,
+html.pg-reader[data-pg-theme="dark"] main img:not(.pg-title-img) {
+  filter: brightness(0.86) contrast(1.02);
+}
+
 /* ── Data Tables ─────────────────────────────────────────── */
 
 .pg-reader main table {
@@ -1588,6 +1657,8 @@ html.pg-articles-layout .pg-reader h1 {
     padding-right: 20px;
   }
 
+  .pg-reader main figure.pg-figure { margin: 1.6em 20px; }
+
   .pg-notes-heading { padding: 0 20px !important; }
   .pg-back-link { padding: 12px 20px 0; }
   .pg-skip-link { left: 16px; }
@@ -1611,6 +1682,8 @@ html.pg-articles-layout .pg-reader h1 {
     padding-left: 16px;
     padding-right: 16px;
   }
+
+  .pg-reader main figure.pg-figure { margin: 1.4em 16px; }
 
   .pg-notes-heading { padding: 0 16px !important; }
   #fn-popover { max-width: calc(100vw - 24px); }

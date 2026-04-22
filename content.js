@@ -195,6 +195,7 @@
         wrapParagraphs(main);
         stripStrayBrs(main);
         cleanupTitleImages(main);
+        enhanceImages(main);
         styleBlockquotes(main);
         if (!isArticlesPage) handleYcBanner(main);
         resetFontTags(main);
@@ -821,6 +822,80 @@
             if (m) return m;
         }
         return null;
+    }
+
+    function altIsMeaningful(alt) {
+        if (!alt) return false;
+        const t = alt.trim();
+        if (t.length < 4 || t.length > 250) return false;
+        // PG often sets alt to the filename — "design-philosophy-3.gif". Reject.
+        if (/\.(gif|jpe?g|png|webp|svg|bmp)$/i.test(t)) return false;
+        // Require at least one space AND one letter to filter out slugs/ids.
+        if (!/\s/.test(t)) return false;
+        return /[a-z]/i.test(t);
+    }
+
+    function enhanceImages(main) {
+        const imgs = Array.from(main.querySelectorAll('img'))
+            .filter(img => !img.classList.contains('pg-title-img'));
+
+        imgs.forEach(img => {
+            const src = img.getAttribute('src') || '';
+            const w = parseInt(img.getAttribute('width') || '0', 10);
+            const h = parseInt(img.getAttribute('height') || '0', 10);
+            // Skip spacer/transparent pixel layout images.
+            if (/trans_1x1|spacer|1x1\.gif/i.test(src)) return;
+            if ((w && w < 20) || (h && h < 20)) return;
+
+            img.setAttribute('loading', 'lazy');
+            img.setAttribute('decoding', 'async');
+
+            const trigger = (img.parentElement && img.parentElement.tagName === 'A')
+                ? img.parentElement : img;
+            if (trigger.tagName === 'A') {
+                trigger.classList.add('pg-img-link');
+            }
+
+            // Find nearest <p> ancestor (stop at main).
+            let parentP = trigger.parentElement;
+            while (parentP && parentP !== main && parentP.tagName !== 'P') {
+                parentP = parentP.parentElement;
+            }
+            if (parentP === main) parentP = null;
+
+            // Only extract into a standalone figure when the image (or its
+            // wrapping anchor) is the only meaningful content of the paragraph.
+            // Otherwise it was inline reference and we leave it alone.
+            let standalone = true;
+            if (parentP) {
+                const clone = parentP.cloneNode(true);
+                clone.querySelectorAll('img').forEach(i => {
+                    if (i.getAttribute('src') === src) {
+                        const a = (i.parentElement && i.parentElement.tagName === 'A')
+                            ? i.parentElement : i;
+                        a.remove();
+                    }
+                });
+                clone.querySelectorAll('br').forEach(br => br.remove());
+                if (clone.textContent.trim().length > 0) standalone = false;
+            }
+
+            if (!standalone) return;
+
+            const fig = document.createElement('figure');
+            fig.className = 'pg-figure';
+            fig.appendChild(trigger);
+            if (altIsMeaningful(img.alt)) {
+                const cap = document.createElement('figcaption');
+                cap.textContent = img.alt.trim();
+                fig.appendChild(cap);
+            }
+
+            if (parentP) {
+                parentP.parentNode.insertBefore(fig, parentP.nextSibling);
+                parentP.remove();
+            }
+        });
     }
 
     function cleanupTitleImages(main) {
