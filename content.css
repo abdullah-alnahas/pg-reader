@@ -671,7 +671,8 @@ html.pg-reader main p.pg-section-first:not(.pg-no-dropcap)::first-letter {
   border-top: none !important;
 }
 
-.pg-notes p + p {
+/* Separator between notes only — not between continuation paragraphs of one note */
+.pg-notes p + p[data-note-start] {
   border-top: 1px dashed var(--pg-border) !important;
 }
 
@@ -1061,6 +1062,15 @@ html.pg-reader main p.pg-section-first:not(.pg-no-dropcap)::first-letter {
   color: var(--pg-accent);
   text-decoration: underline;
   text-underline-offset: 2px;
+}
+
+#fn-popover .fn-content p {
+  margin: 0;
+  padding: 0;
+}
+
+#fn-popover .fn-content p + p {
+  margin-top: 0.7em;
 }
 
 /* ── Inline footnote reference (only the digit is clickable;

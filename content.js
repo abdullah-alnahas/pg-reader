@@ -817,10 +817,17 @@
                     kid.textContent.trim().length >= totalLen * 0.7) {
                     shouldUnwrap = true;
                 } else if (tag === 'P') {
-                    const cn = Array.from(kid.childNodes);
+                    // P that contains many BR-BR pairs anywhere (PG often nests
+                    // the entire essay inside <p><font>...<br><br>...</font></p>)
+                    const brs = kid.querySelectorAll('br');
                     let pairs = 0;
-                    for (let i = 0; i < cn.length - 1; i++) {
-                        if (cn[i].nodeName === 'BR' && cn[i + 1].nodeName === 'BR') pairs++;
+                    for (let i = 0; i < brs.length - 1; i++) {
+                        if (brs[i].nextSibling === brs[i + 1] ||
+                            (brs[i].nextSibling && brs[i].nextSibling.nodeType === Node.TEXT_NODE &&
+                             !brs[i].nextSibling.textContent.trim() &&
+                             brs[i].nextSibling.nextSibling === brs[i + 1])) {
+                            pairs++;
+                        }
                     }
                     if (pairs >= 2) shouldUnwrap = true;
                 }
@@ -1277,15 +1284,16 @@
     /* ── Notes Section ─────────────────────────────────────── */
 
     function wrapNotesSection(main) {
+        const NOTE_START_RE = /^\s*\[?(\d+)[\]\.]\s/;
         const allParagraphs = Array.from(main.querySelectorAll('p'));
         const noteStartIndex = allParagraphs.findIndex(p =>
-            /^\s*\[?\d+[\]\.]\s/.test(p.textContent.trim()) || p.querySelector('a[name]')
+            NOTE_START_RE.test(p.textContent.trim()) || p.querySelector('a[name]')
         );
 
         if (noteStartIndex < 2) return;
 
         const candidateNotes = allParagraphs.slice(noteStartIndex).filter(p =>
-            /^\s*\[?\d+[\]\.]\s/.test(p.textContent.trim()) || p.querySelector('a[name]')
+            NOTE_START_RE.test(p.textContent.trim()) || p.querySelector('a[name]')
         );
         if (candidateNotes.length < 2) return;
 
@@ -1303,6 +1311,21 @@
             section.appendChild(node);
             node = next;
         }
+
+        // Tag each paragraph with its note number. A note starts at "[N]" and
+        // continues until the next "[N+1]" / "Thanks to" / end-of-section.
+        let currentNum = null;
+        Array.from(section.querySelectorAll(':scope > p')).forEach(p => {
+            const text = p.textContent.trim();
+            const startMatch = text.match(NOTE_START_RE);
+            if (startMatch) {
+                currentNum = startMatch[1];
+                p.dataset.noteStart = '1';
+            } else if (/^\s*Thanks to\b/i.test(text)) {
+                currentNum = null;
+            }
+            if (currentNum) p.dataset.noteNum = currentNum;
+        });
 
         main.appendChild(section);
     }
@@ -1793,6 +1816,39 @@
         });
     }
 
+    // Strip a leading "[N]" note marker from the start of a cloned paragraph.
+    // PG writes these as one of:
+    //   text "[N]..."           — plain text
+    //   text "[" + <a>N</a> + "]..."    — anchored digit inside brackets
+    //   <a name="fN"></a>text "[N]..."  — named anchor then brackets
+    // Walk forward removing nodes/text until the first "]" is consumed.
+    function stripLeadingNoteMarker(clone) {
+        let done = false;
+        while (!done && clone.firstChild) {
+            const n = clone.firstChild;
+            if (n.nodeType === Node.TEXT_NODE) {
+                const idx = n.textContent.indexOf(']');
+                if (idx >= 0) {
+                    n.textContent = n.textContent.slice(idx + 1).replace(/^\s+/, '');
+                    if (!n.textContent) n.remove();
+                    done = true;
+                } else {
+                    n.remove();
+                }
+            } else if (n.nodeType === Node.ELEMENT_NODE) {
+                const t = n.textContent.trim();
+                // Anchor-only or digit-only elements belong to the marker — drop them.
+                if (!t || /^\[?\d+[\]\.]?$/.test(t) || (n.tagName === 'A' && !n.hasAttribute('href'))) {
+                    n.remove();
+                } else {
+                    done = true;
+                }
+            } else {
+                n.remove();
+            }
+        }
+    }
+
     function extractFootnoteContent(anchor) {
         const fragment = document.createDocumentFragment();
 
@@ -1800,16 +1856,29 @@
         // linkified by linkifyFootnoteRefs — see spam.html style).
         if (anchor.tagName === 'P' || anchor.classList?.contains('pg-notes')) {
             const source = anchor.tagName === 'P' ? anchor : anchor.querySelector('p');
-            if (source) {
-                const clone = source.cloneNode(true);
-                const w = document.createTreeWalker(clone, NodeFilter.SHOW_TEXT, null);
-                const firstText = w.nextNode();
-                if (firstText) {
-                    firstText.textContent = firstText.textContent.replace(/^\s*\[?\d+[\]\.]\s*/, '');
+            if (!source) return fragment;
+
+            // Gather all paragraphs that belong to the same note — a note may
+            // span several paragraphs (continuation paragraphs share data-note-num
+            // but lack data-note-start).
+            const noteNum = source.dataset.noteNum;
+            const paras = [source];
+            if (noteNum) {
+                let sib = source.nextElementSibling;
+                while (sib && sib.tagName === 'P' &&
+                       sib.dataset.noteNum === noteNum &&
+                       !sib.dataset.noteStart) {
+                    paras.push(sib);
+                    sib = sib.nextElementSibling;
                 }
-                decorateFootnoteLinks(clone);
-                while (clone.firstChild) fragment.appendChild(clone.firstChild);
             }
+
+            paras.forEach((p, idx) => {
+                const clone = p.cloneNode(true);
+                if (idx === 0) stripLeadingNoteMarker(clone);
+                decorateFootnoteLinks(clone);
+                fragment.appendChild(clone);
+            });
             return fragment;
         }
 
