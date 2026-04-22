@@ -237,8 +237,11 @@
     // Assembles and inserts all persistent page chrome (nav, brand header, progress bar,
     // floating controls) into the document body, then wires up their behaviours.
     function mountPageChrome(main, sidebarLinks, readMins) {
-        const topNav = createTopNav(sidebarLinks);
-        const brandHeader = createBrandHeader(createSkipLink(), createThemeToggle());
+        const topNav = createTopNav(sidebarLinks, {
+            brand: true,
+            themeToggle: true,
+            skipLink: true,
+        });
 
         const progressContainer = document.createElement('div');
         progressContainer.className = 'pg-progress-container';
@@ -276,7 +279,6 @@
 
         document.body.insertBefore(wrapper, document.body.firstChild);
         document.body.insertBefore(topNav, document.body.firstChild);
-        document.body.insertBefore(brandHeader, document.body.firstChild);
         document.body.appendChild(progressContainer);
         document.body.appendChild(progressPill);
         document.body.appendChild(toggleContainer);
@@ -475,7 +477,7 @@
         return div;
     }
 
-    function createTopNav(links) {
+    function createTopNav(links, opts = {}) {
         const nav = document.createElement('nav');
         nav.className = 'pg-topnav';
         nav.id = 'pg-topnav';
@@ -483,6 +485,16 @@
 
         const inner = document.createElement('div');
         inner.className = 'pg-topnav-inner';
+
+        if (opts.skipLink) inner.appendChild(createSkipLink());
+
+        if (opts.brand) {
+            const brand = document.createElement('a');
+            brand.href = '/';
+            brand.className = 'pg-brand-link';
+            brand.textContent = 'Paul Graham';
+            inner.appendChild(brand);
+        }
 
         const linksDiv = document.createElement('div');
         linksDiv.className = 'pg-topnav-links';
@@ -512,6 +524,8 @@
         });
 
         inner.appendChild(linksDiv);
+
+        if (opts.themeToggle) inner.appendChild(createThemeToggle());
 
         const hamburger = document.createElement('button');
         hamburger.className = 'pg-topnav-hamburger';
