@@ -1852,27 +1852,25 @@
     function extractFootnoteContent(anchor) {
         const fragment = document.createDocumentFragment();
 
-        // Case A: target is the note paragraph itself (plain-text refs
-        // linkified by linkifyFootnoteRefs — see spam.html style).
-        if (anchor.tagName === 'P' || anchor.classList?.contains('pg-notes')) {
-            const source = anchor.tagName === 'P' ? anchor : anchor.querySelector('p');
-            if (!source) return fragment;
+        // Resolve to the paragraph that contains or is the footnote target.
+        const notePara = anchor.tagName === 'P'
+            ? anchor
+            : (anchor.classList?.contains('pg-notes')
+                ? anchor.querySelector('p')
+                : anchor.closest && anchor.closest('p'));
 
-            // Gather all paragraphs that belong to the same note — a note may
-            // span several paragraphs (continuation paragraphs share data-note-num
-            // but lack data-note-start).
-            const noteNum = source.dataset.noteNum;
-            const paras = [source];
-            if (noteNum) {
-                let sib = source.nextElementSibling;
-                while (sib && sib.tagName === 'P' &&
-                       sib.dataset.noteNum === noteNum &&
-                       !sib.dataset.noteStart) {
-                    paras.push(sib);
-                    sib = sib.nextElementSibling;
-                }
+        // Case A (preferred): paragraph is tagged by wrapNotesSection — gather
+        // all paragraphs sharing data-note-num (a note can span multiple paras).
+        if (notePara && notePara.dataset.noteNum) {
+            const noteNum = notePara.dataset.noteNum;
+            const paras = [notePara];
+            let sib = notePara.nextElementSibling;
+            while (sib && sib.tagName === 'P' &&
+                   sib.dataset.noteNum === noteNum &&
+                   !sib.dataset.noteStart) {
+                paras.push(sib);
+                sib = sib.nextElementSibling;
             }
-
             paras.forEach((p, idx) => {
                 const clone = p.cloneNode(true);
                 if (idx === 0) stripLeadingNoteMarker(clone);
