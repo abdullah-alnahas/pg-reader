@@ -804,15 +804,22 @@
     /* ── Semantic Restructuring ────────────────────────────── */
 
     function promoteTitle(main) {
+        const cleanTitle = (t) => {
+            let s = (t || '').split(' - ')[0].trim();
+            // Strip redundant "Paul Graham " prefix used on utility pages
+            // (Paul Graham Info, Paul Graham Index) — our nav already shows the name.
+            s = s.replace(/^Paul Graham\s+/i, '');
+            return s;
+        };
         const titleImg = findTitleImage(main);
         if (titleImg) {
             const h1 = document.createElement('h1');
-            h1.textContent = document.title.split(' - ')[0] || titleImg.alt || '';
+            h1.textContent = cleanTitle(document.title) || (titleImg.alt || '');
             titleImg.parentNode.insertBefore(h1, titleImg);
             titleImg.remove();
         } else if (!main.querySelector('h1')) {
             const h1 = document.createElement('h1');
-            h1.textContent = document.title.split(' - ')[0] || '';
+            h1.textContent = cleanTitle(document.title);
             main.insertBefore(h1, main.firstChild);
         }
     }
@@ -826,11 +833,15 @@
             const m = imgs.find(img => (img.alt || '').trim() === titleText);
             if (m) return m;
         }
-        // 2. Img whose filename slug starts with the page name (strict prefix).
+        // 2. Img whose filename slug starts with the page name AND is banner-sized
+        //    (short height). Avoids picking content images that share the slug
+        //    (bio-21.gif = PG's photo, 97px tall; bio-22.gif = 18px title banner).
         if (pageName) {
             const m = imgs.find(img => {
                 const fn = (img.getAttribute('src') || '').split('/').pop().toLowerCase();
-                return fn.startsWith(pageName.toLowerCase() + '-');
+                if (!fn.startsWith(pageName.toLowerCase() + '-')) return false;
+                const h = parseInt(img.getAttribute('height') || '0', 10);
+                return h === 0 || h <= 40;
             });
             if (m) return m;
         }
@@ -925,7 +936,15 @@
             const matchesSlug = pageSlug && filename.startsWith(pageSlug + '-');
             // PG's site-wide author-name banner (bel-7.gif, bel-8.gif) — duplicates our brand header
             const isSiteHeader = /^bel-\d+\.gif$/.test(filename);
-            if (matchesTitle || matchesSlug || isSiteHeader) img.remove();
+            // Banner-style title gifs are always small-height text banners. PG uses
+            // the same slug prefix (e.g. bio-21.gif, bio-22.gif) for both the title
+            // banner AND unrelated content (bio-21.gif = Paul's photo, 109×97). Only
+            // remove slug-matches when they look like a banner (height ≤ 40px) or
+            // their alt matches the page title — so photos and diagrams survive.
+            const h = parseInt(img.getAttribute('height') || '0', 10);
+            const isBannerSized = h > 0 && h <= 40;
+            const slugRemovable = matchesSlug && (matchesTitle || isBannerSized);
+            if (matchesTitle || slugRemovable || isSiteHeader) img.remove();
         });
     }
 
@@ -1294,7 +1313,8 @@
         const ul = document.createElement('ul');
         ul.className = 'pg-related-list';
         const seenHrefs = new Set();
-        let hasTranslations = false;
+        let translationCount = 0;
+        let totalCount = 0;
 
         for (const t of candidates) {
             const links = Array.from(t.querySelectorAll('a[href]'))
@@ -1312,7 +1332,8 @@
                 seenHrefs.add(href);
                 const label = a.textContent.trim();
                 if (!label) return;
-                if (/translation/i.test(label)) hasTranslations = true;
+                totalCount++;
+                if (/translation|translated by|übersetzung|traducción|traduction|翻訳|翻译/i.test(label)) translationCount++;
                 const li = document.createElement('li');
                 const aNew = document.createElement('a');
                 aNew.href = href;
@@ -1336,7 +1357,10 @@
         section.className = 'pg-related';
         const heading = document.createElement('h2');
         heading.className = 'pg-related-heading';
-        heading.textContent = hasTranslations ? 'Translations' : 'Related';
+        // Only label as "Translations" when the majority of links actually look
+        // like translations — otherwise mixed/essay-related lists get a wrong header.
+        const mostlyTranslations = totalCount > 0 && (translationCount / totalCount) >= 0.5;
+        heading.textContent = mostlyTranslations ? 'Translations' : 'Related';
         section.appendChild(heading);
         section.appendChild(ul);
 
