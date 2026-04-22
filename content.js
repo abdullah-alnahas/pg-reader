@@ -221,20 +221,41 @@
 
         if (!isArticlesPage) main.insertBefore(createBackLink(), titleArea);
 
-        mountPageChrome(main, sidebarLinks);
+        mountPageChrome(main, sidebarLinks, readMins);
     }
 
     // Assembles and inserts all persistent page chrome (nav, brand header, progress bar,
     // floating controls) into the document body, then wires up their behaviours.
-    function mountPageChrome(main, sidebarLinks) {
+    function mountPageChrome(main, sidebarLinks, readMins) {
         const topNav = createTopNav(sidebarLinks);
         const brandHeader = createBrandHeader(createSkipLink(), createThemeToggle());
 
         const progressContainer = document.createElement('div');
         progressContainer.className = 'pg-progress-container';
+        progressContainer.setAttribute('role', 'progressbar');
+        progressContainer.setAttribute('aria-label', 'Reading progress');
+        progressContainer.setAttribute('aria-valuemin', '0');
+        progressContainer.setAttribute('aria-valuemax', '100');
+        progressContainer.setAttribute('aria-valuenow', '0');
         const progressBar = document.createElement('div');
         progressBar.className = 'pg-progress-bar';
         progressContainer.appendChild(progressBar);
+
+        const progressPill = document.createElement('div');
+        progressPill.className = 'pg-progress-pill';
+        progressPill.setAttribute('aria-hidden', 'true');
+        const pctEl = document.createElement('span');
+        pctEl.className = 'pg-progress-pct';
+        pctEl.textContent = '0%';
+        const dotEl = document.createElement('span');
+        dotEl.className = 'pg-progress-dot';
+        const timeEl = document.createElement('span');
+        timeEl.className = 'pg-progress-time';
+        progressPill.appendChild(pctEl);
+        if (readMins != null) {
+            progressPill.appendChild(dotEl);
+            progressPill.appendChild(timeEl);
+        }
 
         const wrapper = document.createElement('div');
         wrapper.className = 'pg-page';
@@ -247,6 +268,7 @@
         document.body.insertBefore(topNav, document.body.firstChild);
         document.body.insertBefore(brandHeader, document.body.firstChild);
         document.body.appendChild(progressContainer);
+        document.body.appendChild(progressPill);
         document.body.appendChild(toggleContainer);
         document.body.appendChild(backToTop);
 
@@ -260,7 +282,7 @@
 
         setupNavToggle(topNav);
         setupFootnotes();
-        setupProgressBar(progressBar);
+        setupProgressBar(progressContainer, progressBar, progressPill, pctEl, timeEl, main, readMins);
         setupBackToTop(backToTop);
         setupExternalLinks(main);
     }
@@ -566,20 +588,72 @@
 
     /* ── Progress Bar ──────────────────────────────────────── */
 
-    function setupProgressBar(bar) {
+    function setupProgressBar(container, bar, pill, pctEl, timeEl, main, readMins) {
         let ticking = false;
-        const update = () => {
-            const scrollTop = window.scrollY;
-            const total = document.documentElement.scrollHeight - document.documentElement.clientHeight;
-            bar.style.width = total > 0 ? ((scrollTop / total) * 100) + '%' : '0%';
-            ticking = false;
+        let hideTimer = null;
+
+        // Essay body ends at Thanks / Related / Notes (whichever comes first).
+        // Goal-gradient requires "100% = finished reading", not "finished scrolling".
+        const findContentEnd = () => {
+            if (!main) return document.documentElement.scrollHeight;
+            const mainBottom = main.getBoundingClientRect().bottom + window.scrollY;
+            const boundary = main.querySelector('.pg-thanks, .pg-related, .pg-notes');
+            if (!boundary) return mainBottom;
+            const boundaryTop = boundary.getBoundingClientRect().top + window.scrollY;
+            return Math.min(mainBottom, boundaryTop);
         };
-        window.addEventListener('scroll', () => {
+
+        const update = () => {
+            ticking = false;
+            const scrollTop = window.scrollY;
+            const contentEnd = findContentEnd();
+            const denom = Math.max(1, contentEnd - window.innerHeight);
+            const pct = Math.max(0, Math.min(1, scrollTop / denom));
+            const pctInt = Math.round(pct * 100);
+
+            bar.style.width = (pct * 100) + '%';
+            container.setAttribute('aria-valuenow', String(pctInt));
+            if (pctEl) pctEl.textContent = pctInt + '%';
+            if (timeEl && readMins != null) {
+                if (pct >= 0.99) {
+                    timeEl.textContent = 'done';
+                } else {
+                    const remaining = Math.max(1, Math.round(readMins * (1 - pct)));
+                    timeEl.textContent = '~' + remaining + ' min left';
+                }
+            }
+
+            // Goal-gradient amplification: intensify color + lock pill visible near end.
+            const nearEnd = pct >= 0.85;
+            container.classList.toggle('pg-progress-near-end', nearEnd);
+            pill.classList.toggle('pg-progress-pill-lock', nearEnd);
+            // Suppress pill while brand header / nav still in view (avoids overlap
+            // with theme toggle and gives reader a clean entry).
+            const mainTop = main ? main.getBoundingClientRect().top + scrollTop : 0;
+            const inEssay = scrollTop > Math.max(mainTop - 40, 60);
+            pill.classList.toggle('pg-progress-pill-seen', inEssay && pct >= 0.01);
+        };
+
+        const showPillTemporarily = () => {
+            pill.classList.add('pg-progress-pill-show');
+            if (hideTimer) clearTimeout(hideTimer);
+            hideTimer = setTimeout(() => {
+                pill.classList.remove('pg-progress-pill-show');
+            }, 1400);
+        };
+
+        const onScroll = () => {
             if (!ticking) {
                 requestAnimationFrame(update);
                 ticking = true;
             }
-        }, { passive: true });
+            showPillTemporarily();
+        };
+
+        window.addEventListener('scroll', onScroll, { passive: true });
+        window.addEventListener('resize', onScroll, { passive: true });
+        // Recompute once images/fonts settle so contentEnd is accurate.
+        window.addEventListener('load', onScroll);
         update();
     }
 

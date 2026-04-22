@@ -152,8 +152,101 @@ html.pg-reader-skip   { opacity: 1; }
   height: 100%;
   background: var(--pg-nav-bg);
   width: 0%;
-  transition: width 80ms linear;
+  transition: width 80ms linear, background 220ms ease, box-shadow 220ms ease;
   box-shadow: 0 0 6px var(--pg-nav-bg);
+}
+
+/* Goal-gradient: warm accent near end to amplify proximity-to-goal cue. */
+.pg-progress-container.pg-progress-near-end .pg-progress-bar {
+  background: var(--pg-yc-border);
+  box-shadow: 0 0 10px var(--pg-yc-border);
+}
+
+/* Progress pill — shows % + time-left. Applies Goal-Gradient (visible nearness)
+   + Uniform Connectedness (tick links pill to bar, shared accent near end). */
+.pg-progress-pill {
+  position: fixed;
+  top: 12px;
+  right: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 12px;
+  background: var(--pg-surface);
+  color: var(--pg-fg);
+  border: 1px solid var(--pg-border);
+  border-radius: 999px;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  line-height: 1.2;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+  opacity: 0;
+  transform: translateY(-6px);
+  transition: opacity 180ms ease, transform 180ms ease,
+              background-color 220ms ease, border-color 220ms ease, color 220ms ease;
+  pointer-events: none;
+  z-index: 10003;
+  will-change: opacity, transform;
+}
+
+/* Uniform Connectedness: thin tick visually ties pill to the bar above. */
+.pg-progress-pill::before {
+  content: '';
+  position: absolute;
+  top: -6px;
+  right: 22px;
+  width: 2px;
+  height: 6px;
+  background: var(--pg-nav-bg);
+  border-radius: 1px;
+  opacity: 0.75;
+  transition: background 220ms ease;
+}
+
+.pg-progress-dot {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--pg-border);
+  display: inline-block;
+  flex: none;
+}
+
+.pg-progress-pct {
+  font-variant-numeric: tabular-nums;
+}
+
+.pg-progress-time {
+  color: var(--pg-fg);
+  opacity: 0.7;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Show on scroll (with throttle) or lock-on near-end. */
+.pg-progress-pill.pg-progress-pill-show.pg-progress-pill-seen,
+.pg-progress-pill.pg-progress-pill-lock {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Near-end: pill adopts warm accent, matching the bar — stronger UC + goal-gradient. */
+.pg-progress-pill.pg-progress-pill-lock {
+  background: var(--pg-yc-bg);
+  border-color: var(--pg-yc-border);
+  color: var(--pg-yc-fg);
+}
+.pg-progress-pill.pg-progress-pill-lock::before {
+  background: var(--pg-yc-border);
+  opacity: 1;
+}
+.pg-progress-pill.pg-progress-pill-lock .pg-progress-dot {
+  background: var(--pg-yc-border);
+}
+.pg-progress-pill.pg-progress-pill-lock .pg-progress-time {
+  color: var(--pg-yc-fg);
+  opacity: 0.85;
 }
 
 /* ── Brand Header ────────────────────────────────────────── */
@@ -1245,6 +1338,7 @@ html.pg-reader main p.pg-section-first:not(.pg-no-dropcap)::first-letter {
 @media print {
   .pg-topnav,
   .pg-progress-container,
+  .pg-progress-pill,
   .pg-back-link,
   .pg-skip-link,
   .pg-theme-toggle,
@@ -1374,6 +1468,7 @@ html.pg-articles-layout .pg-reader h1 {
 
 @media (prefers-reduced-motion: reduce) {
   .pg-reader .pg-progress-bar { display: none; }
+  .pg-reader .pg-progress-pill { transition: opacity 0ms, transform 0ms; }
   .pg-back-to-top { transition: none; }
 
   .pg-reader,
