@@ -147,6 +147,7 @@ html.pg-reader[data-pg-theme="light"] {
   --pg-fg: #1E252D;
   --pg-muted: #6A7380;
   --pg-border: #DDD9CE;
+  --pg-border-strong: #C4BFB1;
   --pg-nav-bg: var(--pg-accent);
   --pg-shadow-lg: 0 4px 12px rgba(0,0,0,0.06), 0 12px 28px rgba(0,0,0,0.04);
 }
@@ -158,6 +159,7 @@ html.pg-reader[data-pg-theme="light"] {
     --pg-fg: #D6CFBB;
     --pg-muted: #868C97;
     --pg-border: #2B323E;
+    --pg-border-strong: #3E4654;
     --pg-nav-bg: var(--pg-accent);
     --pg-shadow-lg: 0 4px 12px rgba(0,0,0,0.35), 0 12px 28px rgba(0,0,0,0.25);
   }
@@ -169,6 +171,7 @@ html.pg-reader-skip[data-pg-theme="dark"] {
   --pg-fg: #D6CFBB;
   --pg-muted: #868C97;
   --pg-border: #2B323E;
+  --pg-border-strong: #3E4654;
   --pg-nav-bg: var(--pg-accent);
   --pg-shadow-lg: 0 4px 12px rgba(0,0,0,0.3), 0 12px 28px rgba(0,0,0,0.2);
 }
@@ -179,6 +182,7 @@ html.pg-reader-skip[data-pg-theme="light"] {
   --pg-fg: #1E252D;
   --pg-muted: #6A7380;
   --pg-border: #DDD9CE;
+  --pg-border-strong: #C4BFB1;
   --pg-nav-bg: var(--pg-accent);
 }
 
@@ -481,79 +485,62 @@ html.pg-reader-skip   { opacity: 1; }
   overflow: hidden;
 }
 
-/* ── Floating Toggle Switch ──────────────────────────────── */
+/* ── Reader Toggle (inline in nav, or floating when reader is off) ── */
+/* Same visual language as the theme toggle — icon button, no slider. */
 
-.pg-toggle-container {
-  position: fixed;
-  bottom: 30px;
-  right: 30px;
-  z-index: 10000;
-  background: var(--pg-surface);
+.pg-reader-toggle {
+  background: none;
   border: 1px solid var(--pg-border);
-  border-radius: 50px;
-  padding: 8px 16px;
+  border-radius: 8px;
+  width: 34px;
+  height: 34px;
+  cursor: pointer;
+  color: var(--pg-muted);
   display: flex;
   align-items: center;
-  gap: 12px;
+  justify-content: center;
+  flex: none;
+  padding: 0;
+  transition: color 150ms ease, border-color 150ms ease, background 150ms ease;
+}
+
+.pg-reader-toggle:hover {
+  color: var(--pg-fg);
+  border-color: var(--pg-border-strong);
+}
+
+.pg-reader-toggle:focus-visible {
+  outline: 2px solid var(--pg-accent);
+  outline-offset: 2px;
+}
+
+.pg-reader-toggle svg {
+  width: 16px;
+  height: 16px;
+  display: block;
+}
+
+/* Standalone variant — floats over the untransformed PG page so the user
+   can re-enable the reader without opening the popup. Same icon/shape so
+   it's recognisable across states. */
+.pg-reader-toggle-standalone {
+  position: fixed;
+  top: 14px;
+  right: 14px;
+  z-index: 10000;
+  background: var(--pg-surface);
   box-shadow: var(--pg-shadow-lg);
-  user-select: none;
 }
-
-.pg-toggle-label {
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--pg-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.pg-switch {
-  position: relative;
-  display: inline-block;
-  width: 44px;
-  height: 24px;
-}
-
-.pg-switch input {
-  opacity: 0;
-  width: 0;
-  height: 0;
-}
-
-.pg-slider {
-  position: absolute;
-  cursor: pointer;
-  top: 0; left: 0; right: 0; bottom: 0;
-  background-color: var(--pg-border);
-  transition: .3s;
-  border-radius: 24px;
-}
-
-.pg-slider:before {
-  position: absolute;
-  content: "";
-  height: 18px;
-  width: 18px;
-  left: 3px;
-  bottom: 3px;
-  background-color: white;
-  transition: .3s;
-  border-radius: 50%;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-}
-
-input:checked + .pg-slider { background-color: var(--pg-nav-bg); }
-input:checked + .pg-slider:before { transform: translateX(20px); }
 
 /* ── Back to Top ─────────────────────────────────────────── */
 
 .pg-back-to-top {
   position: fixed;
   bottom: 30px;
-  left: 30px;
+  right: 30px;
   z-index: 10000;
-  width: 44px;
-  height: 44px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
   background: var(--pg-surface);
   border: 1px solid var(--pg-border);
@@ -567,7 +554,12 @@ input:checked + .pg-slider:before { transform: translateX(20px); }
   opacity: 0;
   transform: translateY(12px);
   pointer-events: none;
-  transition: opacity 200ms ease, transform 200ms ease, background 150ms ease;
+  transition: opacity 200ms ease, transform 200ms ease, background 150ms ease,
+              border-color 150ms ease, color 150ms ease;
+}
+
+.pg-back-to-top svg {
+  display: block;
 }
 
 .pg-back-to-top-visible {
@@ -577,8 +569,8 @@ input:checked + .pg-slider:before { transform: translateX(20px); }
 }
 
 .pg-back-to-top:hover {
-  background: var(--pg-title-bg);
-  border-color: var(--pg-border);
+  color: var(--pg-accent);
+  border-color: var(--pg-border-strong);
 }
 
 .pg-back-to-top:focus-visible {
@@ -1475,8 +1467,8 @@ html.pg-reader[data-pg-theme="dark"] main img:not(.pg-title-img) {
   .pg-back-link,
   .pg-skip-link,
   .pg-theme-toggle,
+  .pg-reader-toggle,
   .pg-back-to-top,
-  .pg-toggle-container,
   #fn-popover {
     display: none !important;
   }
@@ -1662,8 +1654,8 @@ html.pg-articles-layout .pg-reader h1 {
   .pg-notes-heading { padding: 0 20px !important; }
   .pg-back-link { padding: 12px 20px 0; }
   .pg-skip-link { left: 16px; }
-  .pg-back-to-top { left: 16px; bottom: 80px; }
-  .pg-toggle-container { right: 16px; bottom: 16px; }
+  .pg-back-to-top { right: 16px; bottom: 16px; }
+  .pg-reader-toggle-standalone { top: 10px; right: 10px; }
 }
 
 /* ── Responsive: Mobile ──────────────────────────────────── */

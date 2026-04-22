@@ -73,8 +73,13 @@
     });
 
     function mountStandaloneToggle(enabled) {
-        if (document.querySelector('.pg-toggle-container')) return;
-        const run = () => document.body && document.body.appendChild(createToggleSwitch(enabled));
+        if (document.querySelector('.pg-reader-toggle')) return;
+        const run = () => {
+            if (!document.body) return;
+            const btn = createReaderToggle(enabled);
+            btn.classList.add('pg-reader-toggle-standalone');
+            document.body.appendChild(btn);
+        };
         if (document.body) run();
         else document.addEventListener('DOMContentLoaded', run, { once: true });
     }
@@ -239,6 +244,7 @@
         const topNav = createTopNav(sidebarLinks, {
             brand: true,
             themeToggle: true,
+            readerToggle: true,
             skipLink: true,
         });
 
@@ -273,14 +279,12 @@
         wrapper.className = 'pg-page';
         wrapper.appendChild(main);
 
-        const toggleContainer = createToggleSwitch();
         const backToTop = createBackToTopButton();
 
         document.body.insertBefore(wrapper, document.body.firstChild);
         document.body.insertBefore(topNav, document.body.firstChild);
         document.body.appendChild(progressContainer);
         document.body.appendChild(progressPill);
-        document.body.appendChild(toggleContainer);
         document.body.appendChild(backToTop);
 
         // Hide every table not inside our new <main> (original layout junk).
@@ -350,37 +354,44 @@
         return btn;
     }
 
-    function createToggleSwitch(enabled = true) {
-        const container = document.createElement('div');
-        container.className = 'pg-toggle-container';
-        if (!enabled) container.classList.add('pg-toggle-container-off');
+    function createReaderToggle(enabled) {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'pg-reader-toggle';
+        if (!enabled) btn.classList.add('pg-reader-toggle-off');
+        btn.setAttribute('aria-pressed', String(!!enabled));
+        btn.setAttribute('aria-label', enabled ? 'Disable reader mode' : 'Enable reader mode');
+        btn.title = enabled ? 'Reader mode on (click to disable)' : 'Reader mode off (click to enable)';
 
-        const label = document.createElement('span');
-        label.className = 'pg-toggle-label';
-        label.textContent = 'Reader';
+        const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        svg.setAttribute('width', '16');
+        svg.setAttribute('height', '16');
+        svg.setAttribute('viewBox', '0 0 24 24');
+        svg.setAttribute('fill', 'none');
+        svg.setAttribute('aria-hidden', 'true');
 
-        const switchLabel = document.createElement('label');
-        switchLabel.className = 'pg-switch';
+        // Three horizontal lines (reading icon) — last one shorter, suggests paragraph text.
+        const mk = (d) => {
+            const p = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            p.setAttribute('d', d);
+            p.setAttribute('stroke', 'currentColor');
+            p.setAttribute('stroke-width', '1.8');
+            p.setAttribute('stroke-linecap', 'round');
+            return p;
+        };
+        svg.appendChild(mk('M5 7h14'));
+        svg.appendChild(mk('M5 12h14'));
+        svg.appendChild(mk('M5 17h9'));
+        btn.appendChild(svg);
 
-        const input = document.createElement('input');
-        input.type = 'checkbox';
-        input.checked = enabled;
-
-        const slider = document.createElement('span');
-        slider.className = 'pg-slider';
-
-        input.addEventListener('change', () => {
-            sessionStorage.setItem(SCROLL_KEY, window.scrollY);
-            chrome.storage.sync.set({ [STORAGE_KEY]: input.checked }, () => {
+        btn.addEventListener('click', () => {
+            try { sessionStorage.setItem(SCROLL_KEY, window.scrollY); } catch (_) { }
+            chrome.storage.sync.set({ [STORAGE_KEY]: !enabled }, () => {
                 window.location.reload();
             });
         });
 
-        switchLabel.appendChild(input);
-        switchLabel.appendChild(slider);
-        container.appendChild(label);
-        container.appendChild(switchLabel);
-        return container;
+        return btn;
     }
 
     function createSkipLink() {
@@ -397,18 +408,18 @@
         btn.setAttribute('aria-label', 'Back to top');
 
         const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-        svg.setAttribute('width', '18');
-        svg.setAttribute('height', '18');
+        svg.setAttribute('width', '20');
+        svg.setAttribute('height', '20');
         svg.setAttribute('viewBox', '0 0 24 24');
         svg.setAttribute('fill', 'none');
         svg.setAttribute('aria-hidden', 'true');
+        // WhatsApp Web's chevron-down path, rotated 180° via CSS to point up.
+        svg.style.transform = 'rotate(180deg)';
 
         const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-        path.setAttribute('d', 'M12 19V5M5.5 11.5L12 5l6.5 6.5');
-        path.setAttribute('stroke', 'currentColor');
-        path.setAttribute('stroke-width', '1.6');
-        path.setAttribute('stroke-linecap', 'round');
-        path.setAttribute('stroke-linejoin', 'round');
+        path.setAttribute('d', 'M11 13.6L6.11253 8.71253C5.72003 8.32003 5.08281 8.32285 4.69381 8.7188C4.30964 9.10983 4.31241 9.73741 4.70003 10.125L11.2669 16.6919C11.6718 17.0968 12.3282 17.0968 12.7331 16.6919L19.3 10.125C19.6876 9.73741 19.6904 9.10983 19.3062 8.7188C18.9172 8.32285 18.28 8.32003 17.8875 8.71253L13 13.6L12 14.625L11 13.6Z');
+        path.setAttribute('fill', 'currentColor');
+        path.removeAttribute('stroke');
 
         svg.appendChild(path);
         btn.appendChild(svg);
@@ -548,6 +559,7 @@
         inner.appendChild(linksDiv);
 
         if (opts.themeToggle) inner.appendChild(createThemeToggle());
+        if (opts.readerToggle) inner.appendChild(createReaderToggle(true));
 
         const hamburger = document.createElement('button');
         hamburger.className = 'pg-topnav-hamburger';
