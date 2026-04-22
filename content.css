@@ -716,6 +716,29 @@ html.pg-reader main p.pg-section-first:not(.pg-no-dropcap)::first-letter {
   text-transform: none;
 }
 
+.pg-thanks-links {
+  list-style: none;
+  margin: 0.8em 0 0 !important;
+  padding: 0 !important;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4em 1em;
+}
+
+.pg-thanks-links li {
+  font-size: 0.85em;
+}
+
+.pg-thanks-links a {
+  color: var(--pg-muted);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.pg-thanks-links a:hover {
+  color: var(--pg-accent);
+}
+
 /* ── YC Banner (top) — clean div, matches title area ───── */
 
 .pg-reader .pg-yc-banner {

@@ -195,8 +195,9 @@
         if (isArticlesPage) {
             enhanceArticlesLayout(main);
         } else {
-            wrapNotesSection(main);
             wrapThanksSection(main);
+            collectThanksAppendix(main, contentTd);
+            wrapNotesSection(main);
             markSectionFirstParagraphs(main);
             markFirstParagraph(main);
             markQuoteParagraphs(main);
@@ -1023,6 +1024,67 @@
         }
     }
 
+    // After Thanks is extracted, scan ancestors of the original contentTd for
+    // small link-only tables that sit right after the essay body (PG's
+    // translation / credit blocks — no heading). Append them to .pg-thanks
+    // so they're preserved rather than hidden.
+    function collectThanksAppendix(main, originalContentTd) {
+        const thanks = main.querySelector('.pg-thanks');
+        if (!thanks || !originalContentTd) return;
+
+        const candidates = [];
+        const seen = new Set();
+        let scope = originalContentTd;
+        while (scope && !seen.has(scope) && scope.tagName !== 'BODY') {
+            seen.add(scope);
+            scope.querySelectorAll('table').forEach(t => {
+                if (!main.contains(t) && !t.hasAttribute('data-pg-consumed') &&
+                    !candidates.includes(t)) candidates.push(t);
+            });
+            scope = scope.parentElement;
+        }
+
+        const ul = document.createElement('ul');
+        ul.className = 'pg-thanks-links';
+        const seenHrefs = new Set();
+
+        for (const t of candidates) {
+            const links = Array.from(t.querySelectorAll('a[href]'))
+                .filter(a => a.textContent.trim().length > 1);
+            if (links.length < 1 || links.length > 6) continue;
+            const textLen = t.textContent.trim().length;
+            const linkTextLen = links.reduce((s, a) => s + a.textContent.trim().length, 0);
+            // Table is mostly links (prose overhead < 40 chars total)
+            if (textLen - linkTextLen > 40) continue;
+            const avgLinkLen = linkTextLen / links.length;
+            if (avgLinkLen > 60) continue;
+
+            links.forEach(a => {
+                const href = a.href;
+                if (seenHrefs.has(href)) return;
+                seenHrefs.add(href);
+                const label = a.textContent.trim();
+                if (!label) return;
+                const li = document.createElement('li');
+                const aNew = document.createElement('a');
+                aNew.href = href;
+                aNew.textContent = label;
+                try {
+                    if (new URL(href).origin !== location.origin) {
+                        aNew.target = '_blank';
+                        aNew.rel = 'noopener noreferrer';
+                        aNew.classList.add('pg-ext-link');
+                    }
+                } catch (_) { }
+                li.appendChild(aNew);
+                ul.appendChild(li);
+            });
+            t.setAttribute('data-pg-consumed', 'true');
+        }
+
+        if (ul.children.length > 0) thanks.appendChild(ul);
+    }
+
     function collectMoreInfoLinks(main, originalContentTd) {
         // Match any trailing link-grid heading: More Info, Related, See Also,
         // Further Reading, Translations, etc.
@@ -1285,14 +1347,14 @@
 
     function wrapNotesSection(main) {
         const NOTE_START_RE = /^\s*\[?(\d+)[\]\.]\s/;
-        const allParagraphs = Array.from(main.querySelectorAll('p'));
-        const noteStartIndex = allParagraphs.findIndex(p =>
+        const directParagraphs = Array.from(main.querySelectorAll(':scope > p'));
+        const noteStartIndex = directParagraphs.findIndex(p =>
             NOTE_START_RE.test(p.textContent.trim()) || p.querySelector('a[name]')
         );
 
         if (noteStartIndex < 2) return;
 
-        const candidateNotes = allParagraphs.slice(noteStartIndex).filter(p =>
+        const candidateNotes = directParagraphs.slice(noteStartIndex).filter(p =>
             NOTE_START_RE.test(p.textContent.trim()) || p.querySelector('a[name]')
         );
         if (candidateNotes.length < 2) return;
@@ -1305,9 +1367,16 @@
         heading.textContent = 'Notes';
         section.appendChild(heading);
 
-        let node = allParagraphs[noteStartIndex];
+        // Walk from first note paragraph forward, but skip any .pg-thanks
+        // section (extracted by wrapThanksSection) so it stays separate.
+        let node = directParagraphs[noteStartIndex];
         while (node) {
             const next = node.nextSibling;
+            if (node.nodeType === Node.ELEMENT_NODE &&
+                node.classList?.contains('pg-thanks')) {
+                node = next;
+                continue;
+            }
             section.appendChild(node);
             node = next;
         }
@@ -1331,39 +1400,66 @@
     }
 
     function wrapThanksSection(main) {
-        // A Thanks paragraph typically starts with "Thanks to" near the end of the essay
-        // (before Notes if present, else at the very tail).
+        // PG writes the acknowledgement paragraph as "<b>Thanks</b> to <names>
+        // for reading drafts of this." — sometimes followed by links. Detect it
+        // by the bold "Thanks" prefix (strong signal) or plain "Thanks to" start,
+        // located in the last half of the essay.
         const paragraphs = Array.from(main.querySelectorAll(':scope > p'));
-        const thanksIdx = paragraphs.findIndex(p =>
-            /^\s*Thanks to\b/i.test(p.textContent.trim())
-        );
+        const isThanksPara = (p) => {
+            const text = p.textContent.trim();
+            if (!/^Thanks\b/i.test(text)) return false;
+            // Require "Thanks to" within the first ~30 chars (allows bold tag + space)
+            return /^Thanks\s+to\b/i.test(text.slice(0, 30));
+        };
+        const thanksIdx = paragraphs.findIndex(isThanksPara);
         if (thanksIdx === -1) return;
-
-        // Only treat as a Thanks block if it's in the last ~25% of body paragraphs
         if (thanksIdx < Math.floor(paragraphs.length * 0.5)) return;
+
+        const thanksP = paragraphs[thanksIdx];
+
+        // Strip the leading "Thanks" word (CSS ::before adds its own label).
+        stripLeadingThanks(thanksP);
 
         const section = document.createElement('section');
         section.className = 'pg-thanks';
+        section.appendChild(thanksP);
 
-        const thanksP = paragraphs[thanksIdx];
-        // Collect the thanks paragraph and any immediate sibling <p> that follows before Notes
-        let node = thanksP;
-        const collected = [];
-        while (node && node.classList && !node.classList.contains('pg-notes-heading')) {
-            const next = node.nextSibling;
-            if (node.nodeType === Node.ELEMENT_NODE && node.tagName === 'P') {
-                collected.push(node);
-            } else if (node.nodeType === Node.ELEMENT_NODE && node.tagName === 'SECTION') {
-                break;
-            }
-            node = next;
-        }
-        collected.forEach(p => section.appendChild(p));
-
-        // Insert before .pg-notes if present, else append
+        // Insert before .pg-notes if present, else append at end.
         const notes = main.querySelector('.pg-notes');
         if (notes) main.insertBefore(section, notes);
         else main.appendChild(section);
+    }
+
+    // Remove leading "Thanks" word (and any bold wrapper containing only it)
+    // from a paragraph, leaving "to <names> for ..." plus any trailing links.
+    function stripLeadingThanks(p) {
+        let n = p.firstChild;
+        while (n) {
+            if (n.nodeType === Node.TEXT_NODE) {
+                if (!n.textContent.trim()) { const next = n.nextSibling; n.remove(); n = next; continue; }
+                n.textContent = n.textContent.replace(/^\s*Thanks\s*/i, '');
+                if (!n.textContent) { const next = n.nextSibling; n.remove(); n = next; continue; }
+                break;
+            }
+            if (n.nodeType === Node.ELEMENT_NODE) {
+                const tag = n.tagName;
+                if ((tag === 'B' || tag === 'STRONG' || tag === 'FONT' || tag === 'SPAN') &&
+                    /^\s*Thanks\s*$/i.test(n.textContent)) {
+                    const next = n.nextSibling;
+                    n.remove();
+                    n = next;
+                    continue;
+                }
+                // Element contains "Thanks " inline — descend one level and strip there.
+                if ((tag === 'B' || tag === 'STRONG' || tag === 'FONT' || tag === 'SPAN') &&
+                    /^\s*Thanks\b/i.test(n.textContent)) {
+                    stripLeadingThanks(n);
+                    break;
+                }
+                break;
+            }
+            n = n.nextSibling;
+        }
     }
 
     /* ── Articles Page Layout ─────────────────────────────── */
