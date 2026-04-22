@@ -1026,8 +1026,9 @@
 
     // After Thanks is extracted, scan ancestors of the original contentTd for
     // small link-only tables that sit right after the essay body (PG's
-    // translation / credit blocks — no heading). Append them to .pg-thanks
-    // so they're preserved rather than hidden.
+    // translation / credit blocks — no heading). Render as a separate
+    // .pg-related section placed after Thanks, so they're preserved rather
+    // than hidden.
     function collectThanksAppendix(main, originalContentTd) {
         const thanks = main.querySelector('.pg-thanks');
         if (!thanks || !originalContentTd) return;
@@ -1045,8 +1046,9 @@
         }
 
         const ul = document.createElement('ul');
-        ul.className = 'pg-thanks-links';
+        ul.className = 'pg-related-list';
         const seenHrefs = new Set();
+        let hasTranslations = false;
 
         for (const t of candidates) {
             const links = Array.from(t.querySelectorAll('a[href]'))
@@ -1054,7 +1056,6 @@
             if (links.length < 1 || links.length > 6) continue;
             const textLen = t.textContent.trim().length;
             const linkTextLen = links.reduce((s, a) => s + a.textContent.trim().length, 0);
-            // Table is mostly links (prose overhead < 40 chars total)
             if (textLen - linkTextLen > 40) continue;
             const avgLinkLen = linkTextLen / links.length;
             if (avgLinkLen > 60) continue;
@@ -1065,6 +1066,7 @@
                 seenHrefs.add(href);
                 const label = a.textContent.trim();
                 if (!label) return;
+                if (/translation/i.test(label)) hasTranslations = true;
                 const li = document.createElement('li');
                 const aNew = document.createElement('a');
                 aNew.href = href;
@@ -1082,7 +1084,20 @@
             t.setAttribute('data-pg-consumed', 'true');
         }
 
-        if (ul.children.length > 0) thanks.appendChild(ul);
+        if (ul.children.length === 0) return;
+
+        const section = document.createElement('section');
+        section.className = 'pg-related';
+        const heading = document.createElement('h2');
+        heading.className = 'pg-related-heading';
+        heading.textContent = hasTranslations ? 'Translations' : 'Related';
+        section.appendChild(heading);
+        section.appendChild(ul);
+
+        // Insert after Thanks, before .pg-notes if present.
+        const notes = main.querySelector('.pg-notes');
+        if (notes) main.insertBefore(section, notes);
+        else main.appendChild(section);
     }
 
     function collectMoreInfoLinks(main, originalContentTd) {
