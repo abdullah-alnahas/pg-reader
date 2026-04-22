@@ -110,6 +110,8 @@ html.pg-reader[data-pg-theme="light"] {
 html.pg-reader body {
   background: var(--pg-bg) !important;
   color: var(--pg-fg) !important;
+  margin: 0 !important;
+  padding: 0 !important;
 }
 
 /* ── FOUC Prevention ─────────────────────────────────────── */
