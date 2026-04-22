@@ -18,7 +18,7 @@
         { text: 'Home', href: '/' },
         { text: 'Essays', href: '/articles.html' },
         { text: 'H&P', href: '/hp.html' },
-        { text: 'Y Combinator', href: 'https://www.ycombinator.com' },
+        { text: 'YC', href: 'https://www.ycombinator.com' },
         { text: 'Arc', href: 'http://arclanguage.org' },
         { text: 'Bel', href: '/bel.html' },
         { text: 'RSS', href: '/rss.html' },
@@ -30,7 +30,7 @@
     // Maps image-map filenames/hostnames → human-readable nav labels.
     const AREA_LABEL_MAP = {
         'index': 'Home', 'articles': 'Essays', 'hp': 'H&P',
-        'books': 'Books', 'ycombinator': 'Y Combinator', 'arc': 'Arc',
+        'books': 'Books', 'ycombinator': 'YC', 'arc': 'Arc',
         'bel': 'Bel', 'lisp': 'Lisp', 'antispam': 'Spam', 'spam': 'Spam',
         'kedrosky': 'Responses', 'faq': 'FAQs', 'raq': 'RAQs',
         'quo': 'Quotes', 'rss': 'RSS', 'bio': 'Bio',
