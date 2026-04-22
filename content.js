@@ -669,12 +669,20 @@
 
     function findTitleImage(container) {
         const pageName = location.pathname.replace(/\.html?$/, '').replace(/^\//, '');
-        if (pageName) {
-            const match = container.querySelector('img[src*="' + pageName + '"]');
-            if (match) return match;
+        const titleText = (document.title.split(' - ')[0] || '').trim();
+        const imgs = Array.from(container.querySelectorAll('img'));
+        // 1. Prefer img whose alt exactly matches the page title.
+        if (titleText) {
+            const m = imgs.find(img => (img.alt || '').trim() === titleText);
+            if (m) return m;
         }
-        for (const img of container.querySelectorAll('img')) {
-            if (img.alt && img.alt.length > 2) return img;
+        // 2. Img whose filename slug starts with the page name (strict prefix).
+        if (pageName) {
+            const m = imgs.find(img => {
+                const fn = (img.getAttribute('src') || '').split('/').pop().toLowerCase();
+                return fn.startsWith(pageName.toLowerCase() + '-');
+            });
+            if (m) return m;
         }
         return null;
     }
@@ -817,6 +825,20 @@
                     totalLen > 0 &&
                     kid.textContent.trim().length >= totalLen * 0.7) {
                     shouldUnwrap = true;
+                } else if (/^(FONT|SPAN|DIV)$/.test(tag)) {
+                    // FONT/SPAN/DIV that holds many paragraph breaks — PG often
+                    // splits the essay body across two FONT siblings (growth.html).
+                    const brs = kid.querySelectorAll('br');
+                    let pairs = 0;
+                    for (let i = 0; i < brs.length - 1; i++) {
+                        if (brs[i].nextSibling === brs[i + 1] ||
+                            (brs[i].nextSibling && brs[i].nextSibling.nodeType === Node.TEXT_NODE &&
+                             !brs[i].nextSibling.textContent.trim() &&
+                             brs[i].nextSibling.nextSibling === brs[i + 1])) {
+                            pairs++;
+                        }
+                    }
+                    if (pairs >= 3) shouldUnwrap = true;
                 } else if (tag === 'P') {
                     // P that contains many BR-BR pairs anywhere (PG often nests
                     // the entire essay inside <p><font>...<br><br>...</font></p>)
@@ -1428,8 +1450,8 @@
         const isThanksPara = (p) => {
             const text = p.textContent.trim();
             if (!/^Thanks\b/i.test(text)) return false;
-            // Require "Thanks to" within the first ~30 chars (allows bold tag + space)
-            return /^Thanks\s+to\b/i.test(text.slice(0, 30));
+            // Allow "Thanks to ..." or "Thanks: to ..." (PG uses both).
+            return /^Thanks\s*:?\s+to\b/i.test(text.slice(0, 30));
         };
         const thanksIdx = paragraphs.findIndex(isThanksPara);
         if (thanksIdx === -1) return;
@@ -1450,29 +1472,28 @@
         else main.appendChild(section);
     }
 
-    // Remove leading "Thanks" word (and any bold wrapper containing only it)
-    // from a paragraph, leaving "to <names> for ..." plus any trailing links.
+    // Remove leading "Thanks" (or "Thanks:") from a paragraph, leaving "to <names>..."
+    // plus any trailing links. Handles the word inside <b>/<strong>/<font>/<span> wrappers.
     function stripLeadingThanks(p) {
+        const WORD_RE = /^\s*Thanks\s*:?\s*/i;
+        const WRAPPER_ONLY_RE = /^\s*Thanks\s*:?\s*$/i;
+        const WRAPPER_TAGS = /^(B|STRONG|FONT|SPAN|I|EM)$/;
         let n = p.firstChild;
         while (n) {
             if (n.nodeType === Node.TEXT_NODE) {
                 if (!n.textContent.trim()) { const next = n.nextSibling; n.remove(); n = next; continue; }
-                n.textContent = n.textContent.replace(/^\s*Thanks\s*/i, '');
+                n.textContent = n.textContent.replace(WORD_RE, '');
                 if (!n.textContent) { const next = n.nextSibling; n.remove(); n = next; continue; }
                 break;
             }
             if (n.nodeType === Node.ELEMENT_NODE) {
-                const tag = n.tagName;
-                if ((tag === 'B' || tag === 'STRONG' || tag === 'FONT' || tag === 'SPAN') &&
-                    /^\s*Thanks\s*$/i.test(n.textContent)) {
+                if (WRAPPER_TAGS.test(n.tagName) && WRAPPER_ONLY_RE.test(n.textContent)) {
                     const next = n.nextSibling;
                     n.remove();
                     n = next;
                     continue;
                 }
-                // Element contains "Thanks " inline — descend one level and strip there.
-                if ((tag === 'B' || tag === 'STRONG' || tag === 'FONT' || tag === 'SPAN') &&
-                    /^\s*Thanks\b/i.test(n.textContent)) {
+                if (WRAPPER_TAGS.test(n.tagName) && /^\s*Thanks\b/i.test(n.textContent)) {
                     stripLeadingThanks(n);
                     break;
                 }
@@ -1480,6 +1501,11 @@
             }
             n = n.nextSibling;
         }
+        // Also strip a leading stray colon if the Thanks prefix lived in a separate
+        // wrapper and the colon remained on the following text node.
+        const w = document.createTreeWalker(p, NodeFilter.SHOW_TEXT, null);
+        const first = w.nextNode();
+        if (first) first.textContent = first.textContent.replace(/^\s*:\s*/, '');
     }
 
     /* ── Articles Page Layout ─────────────────────────────── */
