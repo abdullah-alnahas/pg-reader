@@ -1954,12 +1954,28 @@
         }
 
         if (essays.length > 0) {
+            // Dedup first so the filter/count reflect what's actually rendered
+            const seen = new Set();
+            const unique = essays.filter(e => !seen.has(e.href) && seen.add(e.href));
+
+            // Toolbar: title counter + live-filter input
+            const toolbar = document.createElement('div');
+            toolbar.className = 'pg-articles-toolbar';
+            const count = document.createElement('span');
+            count.className = 'pg-articles-count';
+            count.textContent = unique.length + ' essays';
+            const filter = document.createElement('input');
+            filter.type = 'search';
+            filter.className = 'pg-articles-filter';
+            filter.placeholder = 'Filter essays…';
+            filter.setAttribute('aria-label', 'Filter essays by title');
+            toolbar.appendChild(count);
+            toolbar.appendChild(filter);
+            main.appendChild(toolbar);
+
             const ul = document.createElement('ul');
             ul.className = 'pg-essay-list';
-            const seen = new Set();
-            essays.forEach(e => {
-                if (seen.has(e.href)) return;
-                seen.add(e.href);
+            unique.forEach(e => {
                 const li = document.createElement('li');
                 li.className = 'pg-essay-item';
                 const a = document.createElement('a');
@@ -1976,6 +1992,20 @@
                 ul.appendChild(li);
             });
             main.appendChild(ul);
+
+            filter.addEventListener('input', () => {
+                const q = filter.value.trim().toLowerCase();
+                let shown = 0;
+                Array.from(ul.children).forEach(li => {
+                    const title = (li.querySelector('.pg-essay-link')?.textContent || '').toLowerCase();
+                    const match = !q || title.includes(q);
+                    li.style.display = match ? '' : 'none';
+                    if (match) shown++;
+                });
+                count.textContent = q
+                    ? shown + ' of ' + unique.length + ' essays'
+                    : unique.length + ' essays';
+            });
         }
     }
 
