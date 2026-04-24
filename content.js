@@ -325,12 +325,21 @@
         }
         document.body.appendChild(backToTop);
 
-        // Hide every table not inside our new <main> (original layout junk).
-        document.querySelectorAll('table').forEach(table => {
-            if (!main.contains(table)) {
-                table.style.display = 'none';
-                table.setAttribute('aria-hidden', 'true');
-            }
+        // Remove every table not inside our new <main> (original layout junk —
+        // imagemap nav, consumed "More info" grid, spacer scaffolding). Hiding
+        // with display:none keeps those nodes + their images retained, which
+        // bloats tab memory on each refresh. Detach outermost tables only so
+        // nested ones drop with their parents.
+        const junkTables = Array.from(document.querySelectorAll('table'))
+            .filter(t => !main.contains(t));
+        junkTables.forEach(t => {
+            if (!t.parentNode) return;
+            if (junkTables.some(other => other !== t && other.contains(t))) return;
+            t.remove();
+        });
+        // Sibling imagemaps referenced by those tables also linger.
+        document.querySelectorAll('map').forEach(m => {
+            if (!main.contains(m)) m.remove();
         });
 
         setupNavToggle(topNav);
@@ -794,7 +803,7 @@
         window.addEventListener('scroll', onScroll, { passive: true });
         window.addEventListener('resize', onScroll, { passive: true });
         // Recompute once images/fonts settle so contentEnd is accurate.
-        window.addEventListener('load', onScroll);
+        window.addEventListener('load', onScroll, { once: true });
         update();
     }
 
