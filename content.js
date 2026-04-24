@@ -129,29 +129,39 @@
             });
         }
 
-        // Tier 3: td with many short links (text nav)
-        if (!sidebarTd) {
-            sidebarTd = tds.find(td => {
-                const links = Array.from(td.querySelectorAll('a'));
-                const avgLinkLen = links.length > 0
-                    ? links.reduce((s, a) => s + a.textContent.trim().length, 0) / links.length
-                    : 999;
-                return links.length >= 4 && links.length <= 25 &&
-                    avgLinkLen < 20 && td.textContent.replace(/\s+/g, '').length < 500;
-            });
-        }
-
-        // Tier 4: td with image map areas (own.html style — <map><area href>)
+        // Tier 3: td with image map areas (own.html style — <map><area href>)
         if (!sidebarTd) {
             sidebarTd = tds.find(td => td.querySelectorAll('area[href]').length >= 3);
         }
 
-        // Find the td with most text as content (excluding sidebar and its ancestors/descendants)
+        // Tier 4: td with many short links (text nav).
+        // Skip tds whose links are mostly essay-list entries (anchor-then-<br> pattern),
+        // which is how paginated index pages like ind_1.html structure their content.
+        if (!sidebarTd) {
+            sidebarTd = tds.find(td => {
+                const links = Array.from(td.querySelectorAll('a'));
+                if (links.length < 4 || links.length > 25) return false;
+                const avgLinkLen = links.reduce((s, a) => s + a.textContent.trim().length, 0) / links.length;
+                if (avgLinkLen >= 20) return false;
+                if (td.textContent.replace(/\s+/g, '').length >= 500) return false;
+                // Reject essay-list pattern: each link followed by <br> and little else
+                const brCount = td.querySelectorAll('br').length;
+                if (brCount >= links.length - 1 && td.querySelectorAll('img').length === 0) return false;
+                return true;
+            });
+        }
+
+        // Find the td with most text as content (excluding sidebar and its ancestors/descendants).
+        // Short paginated index pages (ind_N.html) can have contentTd under 200 chars, so also
+        // accept tds with an essay-list pattern (≥4 anchors followed by <br>).
         tds.forEach((td) => {
             if (td === sidebarTd) return;
             if (sidebarTd && (sidebarTd.contains(td) || td.contains(sidebarTd))) return;
             const textLen = td.textContent.trim().length;
-            if (textLen > maxTextLen && textLen > 200) {
+            const links = td.querySelectorAll('a').length;
+            const brs = td.querySelectorAll('br').length;
+            const isEssayList = links >= 4 && brs >= links - 1;
+            if (textLen > maxTextLen && (textLen > 200 || isEssayList)) {
                 maxTextLen = textLen;
                 contentTd = td;
             }
@@ -188,7 +198,7 @@
         }
 
         const isArticlesPage = /\/articles(\.html?)?$/.test(location.pathname);
-        const isIndexPage = /\/ind(\.html?)?$/.test(location.pathname);
+        const isIndexPage = /\/ind(_\d+)?(\.html?)?$/.test(location.pathname);
         if (isArticlesPage || isIndexPage) document.documentElement.classList.add('pg-articles-layout');
 
         const sidebarLinks = extractNavLinks(sidebarTd);
@@ -1926,33 +1936,83 @@
     // table rows, so enhanceArticlesLayout can't process it. Extract every
     // top-level link into pg-essay-list for the same rendered look as articles.
     function enhanceIndexLayout(main) {
-        const anchors = Array.from(main.querySelectorAll('a[href]')).filter(a => {
+        // ind.html's Prev/Next paginator lives in a tiny sibling <table> that the
+        // content-td drill step excludes, so search the ORIGINAL document for it.
+        // Text: "Prev" (bare text = disabled) and/or an <a>Next</a> to ind_N.html.
+        const PAGE_HREF_RE = /(^|\/)ind(_\d+)?\.html?$/i;
+        // Paginator anchors may live inside main (ind_2.html onward — paginator td is
+        // a sibling of the essay-list td inside a single outer wrapper td, so createMain
+        // moves both into main) or outside main (ind.html — paginator in sibling td
+        // excluded by the content-td drill). Union both.
+        const anchorScope = new Set([
+            ...Array.from(document.querySelectorAll('a[href]')),
+            ...Array.from(main.querySelectorAll('a[href]')),
+        ]);
+        const paginatorAnchors = Array.from(anchorScope).filter(a => {
+            const t = a.textContent.replace(/\s+/g, ' ').trim();
+            const h = a.getAttribute('href') || '';
+            return /^(prev|previous|next|←|→|«|»|‹|›)$/i.test(t) && PAGE_HREF_RE.test(h);
+        });
+        const prevLink = paginatorAnchors.find(a => /^(prev|previous|←|«|‹)$/i.test(a.textContent.trim()));
+        const nextLink = paginatorAnchors.find(a => /^(next|→|»|›)$/i.test(a.textContent.trim()));
+        // Bare "Prev"/"Next" text (no anchor) indicates disabled state on first/last page.
+        const bodyText = (document.body.textContent || '') + ' ' + (main.textContent || '');
+        const hasPrev = !!prevLink || /\bPrev\b\s*(?:\||&nbsp;|$)/.test(bodyText);
+        const hasNext = !!nextLink || /(?:\||&nbsp;)\s*\bNext\b/.test(bodyText);
+
+        // Essay anchors are just what's already in main.
+        const paginatorSet = new Set(paginatorAnchors);
+        const essayAnchors = Array.from(main.querySelectorAll('a[href]')).filter(a => {
+            if (paginatorSet.has(a)) return false;
             const t = a.textContent.replace(/\s+/g, ' ').trim();
             return t.length >= 2;
         });
+
         // Wipe the existing unstructured body, keep h1/title area.
         Array.from(main.childNodes).forEach(n => {
             if (n.nodeType === Node.ELEMENT_NODE &&
                 (n.tagName === 'H1' || n.classList?.contains('pg-title-area'))) return;
             n.remove();
         });
-        if (anchors.length === 0) return;
-        const ul = document.createElement('ul');
-        ul.className = 'pg-essay-list';
-        const seen = new Set();
-        anchors.forEach(a => {
-            if (seen.has(a.href)) return;
-            seen.add(a.href);
-            const li = document.createElement('li');
-            li.className = 'pg-essay-item';
-            const link = document.createElement('a');
-            link.href = a.href;
-            link.className = 'pg-essay-link';
-            link.textContent = a.textContent.replace(/\s+/g, ' ').trim();
-            li.appendChild(link);
-            ul.appendChild(li);
-        });
-        main.appendChild(ul);
+
+        if (essayAnchors.length > 0) {
+            const ul = document.createElement('ul');
+            ul.className = 'pg-essay-list';
+            const seen = new Set();
+            essayAnchors.forEach(a => {
+                if (seen.has(a.href)) return;
+                seen.add(a.href);
+                const li = document.createElement('li');
+                li.className = 'pg-essay-item';
+                const link = document.createElement('a');
+                link.href = a.href;
+                link.className = 'pg-essay-link';
+                link.textContent = a.textContent.replace(/\s+/g, ' ').trim();
+                li.appendChild(link);
+                ul.appendChild(li);
+            });
+            main.appendChild(ul);
+        }
+
+        // Append paginator (preserves PG's own Prev/Next pagination across
+        // ind.html → ind_1.html → ind_2.html ...).
+        if (hasPrev || hasNext) {
+            const pager = document.createElement('nav');
+            pager.className = 'pg-index-paginator';
+            pager.setAttribute('aria-label', 'Index pagination');
+            const mk = (label, href, disabled) => {
+                const el = disabled
+                    ? document.createElement('span')
+                    : document.createElement('a');
+                el.className = 'pg-index-pager-link' + (disabled ? ' pg-index-pager-disabled' : '');
+                if (!disabled) el.href = href;
+                el.textContent = label;
+                return el;
+            };
+            pager.appendChild(mk('← Prev', prevLink?.getAttribute('href'), !prevLink));
+            pager.appendChild(mk('Next →', nextLink?.getAttribute('href'), !nextLink));
+            main.appendChild(pager);
+        }
     }
 
     /* ── Drop Cap ──────────────────────────────────────────── */

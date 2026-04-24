@@ -1589,6 +1589,45 @@ html.pg-articles-layout .pg-reader h1 {
   .pg-essay-item   { padding: 0.48em 20px !important; }
 }
 
+/* ── Index Paginator (ind.html → ind_1.html → …) ─────────── */
+
+.pg-index-paginator {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 2.5em auto 1em;
+  padding: 1.4em 40px 0;
+  border-top: 1px solid var(--pg-border);
+  max-width: 100%;
+}
+
+.pg-index-pager-link {
+  font-size: 0.95rem;
+  font-weight: 500;
+  padding: 8px 18px;
+  border: 1px solid var(--pg-border);
+  border-radius: 6px;
+  text-decoration: none;
+  color: var(--pg-fg);
+  background: var(--pg-bg);
+  transition: border-color .15s ease, color .15s ease, background .15s ease;
+}
+
+.pg-index-pager-link:hover:not(.pg-index-pager-disabled) {
+  border-color: var(--pg-accent);
+  color: var(--pg-accent);
+}
+
+.pg-index-pager-disabled {
+  color: var(--pg-muted);
+  opacity: 0.55;
+  cursor: default;
+}
+
+@media (max-width: 768px) {
+  .pg-index-paginator { padding: 1.4em 20px 0; }
+}
+
 /* ── Reduced Motion ──────────────────────────────────────── */
 
 @media (prefers-reduced-motion: reduce) {
