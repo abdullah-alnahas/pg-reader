@@ -229,6 +229,13 @@
 
         // Date must be extracted BEFORE drop cap (otherwise first letter span breaks month regex)
         const essayDate = (isArticlesPage || isIndexPage || isUtilityPage) ? null : extractEssayDate(main);
+        // extractEssayDate empties the text node that held the date; drop any now-blank
+        // paragraphs so the rendered body doesn't have a hollow leading block.
+        main.querySelectorAll(':scope > p').forEach(p => {
+            if (!p.textContent.trim() && p.querySelectorAll('img, a[href], code').length === 0) {
+                p.remove();
+            }
+        });
 
         // Long-form essay = has enough body to warrant reader chrome (drop cap,
         // progress bar, reading time). Utility/list pages and very short pages skip it.
@@ -1660,6 +1667,7 @@
         let text = rawText;
         let preText = '';
         let preLinks = [];
+        let postText = '';
         if (openMatch) {
             const from = openMatch.index;
             const linkText = primary ? primary.textContent.trim() : '';
@@ -1675,7 +1683,6 @@
             // separate news element — it carries unique essay links we must not drop.
             preText = rawText.slice(0, from).trim().replace(/[\s|·•]+$/, '');
             if (preText) {
-                // Pick up only links that appear before the YC phrase in DOM order.
                 preLinks = Array.from(el.querySelectorAll('a[href]')).filter(a => {
                     const t = a.textContent.trim();
                     if (!t || a === primary) return false;
@@ -1683,6 +1690,9 @@
                     return idx >= 0 && idx < from;
                 });
             }
+            // Preserve content AFTER the YC sentence (e.g. ds.html's stray "July 2013"
+            // that wrapParagraphs swept into the same <p>) so the date still surfaces.
+            postText = rawText.slice(endIdx).trim();
         }
 
         if (primary) {
@@ -1735,6 +1745,13 @@
         }
 
         el.replaceWith(div);
+
+        // Re-insert post-YC leftover text as its own paragraph AFTER the banner.
+        if (postText) {
+            const p = document.createElement('p');
+            p.textContent = postText;
+            div.parentNode.insertBefore(p, div.nextSibling);
+        }
         return div;
     }
 

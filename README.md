@@ -2,13 +2,13 @@
 
 Reader mode for [paulgraham.com](https://paulgraham.com) essays.
 
-## Before / After
+## Before / After — "Do Things that Don't Scale"
 
 ### Without extension
-![Disabled](screenshots/disabled.png)
+![Before](screenshots/ds-before.png)
 
 ### With extension — light
-![Enabled light](screenshots/enabled-light.png)
+![After light](screenshots/ds-after-light.png)
 
 ### With extension — dark
-![Enabled dark](screenshots/enabled-dark.png)
+![After dark](screenshots/ds-after-dark.png)
