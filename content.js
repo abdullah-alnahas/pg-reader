@@ -199,7 +199,18 @@
 
         const isArticlesPage = /\/articles(\.html?)?$/.test(location.pathname);
         const isIndexPage = /\/ind(_\d+)?(\.html?)?$/.test(location.pathname);
+        // Utility / list / short-profile pages — never get essay chrome (drop cap,
+        // reading time, progress bar). Match on slug, not URL, so the list stays
+        // grep-friendly.
+        const UTILITY_SLUGS = new Set([
+            '', 'index', 'bio', 'info', 'quo', 'kedrosky', 'raq', 'faq', 'rss',
+            'sfp', 'rfs', 'credentials', 'books', 'lisp', 'arc', 'bel', 'antispam',
+            'noop', 'gba', 'gh', 'bronze', 'watch',
+        ]);
+        const pageSlug = location.pathname.replace(/^\//, '').replace(/\.html?$/, '').toLowerCase();
+        const isUtilityPage = UTILITY_SLUGS.has(pageSlug);
         if (isArticlesPage || isIndexPage) document.documentElement.classList.add('pg-articles-layout');
+        if (isUtilityPage) document.documentElement.classList.add('pg-utility-layout');
 
         const sidebarLinks = extractNavLinks(sidebarTd);
         const main = createMain(contentTd);
@@ -217,7 +228,12 @@
         resetFontTags(main);
 
         // Date must be extracted BEFORE drop cap (otherwise first letter span breaks month regex)
-        const essayDate = (isArticlesPage || isIndexPage) ? null : extractEssayDate(main);
+        const essayDate = (isArticlesPage || isIndexPage || isUtilityPage) ? null : extractEssayDate(main);
+
+        // Long-form essay = has enough body to warrant reader chrome (drop cap,
+        // progress bar, reading time). Utility/list pages and very short pages skip it.
+        const mainTextLen = main.textContent.replace(/\s+/g, ' ').trim().length;
+        const isLongFormEssay = !isArticlesPage && !isIndexPage && !isUtilityPage && mainTextLen > 1200;
 
         if (isArticlesPage) {
             enhanceArticlesLayout(main);
@@ -235,25 +251,25 @@
             linkifyFootnoteRefs(main);
             // Auto-linkify bare URLs in main body + notes (PG writes them as plain text)
             autolinkUrls(main);
-            applyDropCap(main);
+            if (isLongFormEssay) applyDropCap(main);
         }
 
-        const readMins = (isArticlesPage || isIndexPage) ? null : calculateReadingTime(main);
+        const readMins = isLongFormEssay ? calculateReadingTime(main) : null;
         const metaLine = createMetaLine(readMins, essayDate);
 
         const titleArea = document.createElement('div');
         titleArea.className = 'pg-title-area';
         const h1 = main.querySelector('h1');
         if (h1) titleArea.appendChild(h1);
-        if (!isArticlesPage && !isIndexPage) titleArea.appendChild(metaLine);
+        if (isLongFormEssay) titleArea.appendChild(metaLine);
         main.insertBefore(titleArea, main.firstChild);
 
-        mountPageChrome(main, sidebarLinks, readMins);
+        mountPageChrome(main, sidebarLinks, readMins, isLongFormEssay);
     }
 
     // Assembles and inserts all persistent page chrome (nav, brand header, progress bar,
     // floating controls) into the document body, then wires up their behaviours.
-    function mountPageChrome(main, sidebarLinks, readMins) {
+    function mountPageChrome(main, sidebarLinks, readMins, showProgress) {
         const topNav = createTopNav(sidebarLinks, {
             brand: true,
             themeToggle: true,
@@ -296,8 +312,10 @@
 
         document.body.insertBefore(wrapper, document.body.firstChild);
         document.body.insertBefore(topNav, document.body.firstChild);
-        document.body.appendChild(progressContainer);
-        document.body.appendChild(progressPill);
+        if (showProgress) {
+            document.body.appendChild(progressContainer);
+            document.body.appendChild(progressPill);
+        }
         document.body.appendChild(backToTop);
 
         // Hide every table not inside our new <main> (original layout junk).
@@ -310,7 +328,9 @@
 
         setupNavToggle(topNav);
         setupFootnotes();
-        setupProgressBar(progressContainer, progressBar, progressPill, pctEl, timeEl, main, readMins);
+        if (showProgress) {
+            setupProgressBar(progressContainer, progressBar, progressPill, pctEl, timeEl, main, readMins);
+        }
         setupBackToTop(backToTop);
         setupExternalLinks(main);
     }
@@ -833,7 +853,13 @@
             return month + ' ' + year;
         };
 
-        const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT, null);
+        // Skip nodes inside the promoted <h1> — when the essay title happens to contain
+        // a date (e.g. "12 August 1995: It Works"), stripping it shreds the title.
+        const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT, {
+            acceptNode: (n) => n.parentElement && n.parentElement.closest('h1, .pg-title-area')
+                ? NodeFilter.FILTER_REJECT
+                : NodeFilter.FILTER_ACCEPT,
+        });
         let node;
         while ((node = walker.nextNode())) {
             const m = node.textContent.match(dateRe);
@@ -1620,10 +1646,31 @@
             return a.textContent.trim().length > 0 && !/\.(gif|png|jpe?g)$/i.test(href);
         });
 
-        const text = el.textContent.replace(/\s+/g, ' ').trim();
+        const rawText = el.textContent.replace(/\s+/g, ' ').trim();
         const primary = links.find(a =>
             /ycombinator|hacker\s*news/i.test(a.href + ' ' + a.textContent)
         ) || links[0];
+
+        // Narrow the banner text to just the YC promo sentence. PG sometimes runs the
+        // promo inline with unrelated content (home page "New: ..." strip before it,
+        // founders.html essay lede after it). Slice from the known YC opener to the
+        // first period that follows the primary link.
+        const openRe = /(Want to start a startup\?|Apply to\s+Y\s*Combinator|Get funded by)/i;
+        const openMatch = rawText.match(openRe);
+        let text = rawText;
+        if (openMatch) {
+            const from = openMatch.index;
+            const linkText = primary ? primary.textContent.trim() : '';
+            const afterLinkIdx = linkText ? rawText.indexOf(linkText, from) : -1;
+            let endIdx = rawText.length;
+            if (afterLinkIdx >= 0) {
+                // First period/exclamation after the link, or end of string
+                const tail = rawText.slice(afterLinkIdx + linkText.length);
+                const m = tail.match(/^[\s\.\!\?]*/);
+                endIdx = afterLinkIdx + linkText.length + (m ? m[0].length : 0);
+            }
+            text = rawText.slice(from, endIdx).trim();
+        }
 
         if (primary) {
             const linkText = primary.textContent.trim();
@@ -2191,10 +2238,20 @@
 
         // Opens the popover anchored to a footnote reference link.
         const showPopover = (link, href, noteLabel) => {
+            // Some PG essays (name.html) have broken anchors — every ref points to #f1n
+            // regardless of the visible number. Trust the visible number first: try the
+            // conventional fN n / pg-fn-N ids before falling back to the href.
+            const byNum = /^\d+$/.test(noteLabel)
+                ? (document.getElementById('f' + noteLabel + 'n') ||
+                   document.querySelector('a[name="f' + noteLabel + 'n"]') ||
+                   document.getElementById('pg-fn-' + noteLabel))
+                : null;
             const targetId = href.split('#')[1];
-            if (!targetId) return;
-            const target = document.getElementById(targetId) ||
-                document.querySelector('a[name="' + targetId + '"]');
+            const byHref = targetId
+                ? (document.getElementById(targetId) ||
+                   document.querySelector('a[name="' + targetId + '"]'))
+                : null;
+            const target = byNum || byHref;
             if (!target) return;
 
             while (content.firstChild) content.removeChild(content.firstChild);
