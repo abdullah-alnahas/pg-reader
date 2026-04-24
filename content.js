@@ -1658,18 +1658,31 @@
         const openRe = /(Want to start a startup\?|Apply to\s+Y\s*Combinator|Get funded by)/i;
         const openMatch = rawText.match(openRe);
         let text = rawText;
+        let preText = '';
+        let preLinks = [];
         if (openMatch) {
             const from = openMatch.index;
             const linkText = primary ? primary.textContent.trim() : '';
             const afterLinkIdx = linkText ? rawText.indexOf(linkText, from) : -1;
             let endIdx = rawText.length;
             if (afterLinkIdx >= 0) {
-                // First period/exclamation after the link, or end of string
                 const tail = rawText.slice(afterLinkIdx + linkText.length);
                 const m = tail.match(/^[\s\.\!\?]*/);
                 endIdx = afterLinkIdx + linkText.length + (m ? m[0].length : 0);
             }
             text = rawText.slice(from, endIdx).trim();
+            // Preserve content BEFORE the YC phrase (home page's "New: …" strip) as a
+            // separate news element — it carries unique essay links we must not drop.
+            preText = rawText.slice(0, from).trim().replace(/[\s|·•]+$/, '');
+            if (preText) {
+                // Pick up only links that appear before the YC phrase in DOM order.
+                preLinks = Array.from(el.querySelectorAll('a[href]')).filter(a => {
+                    const t = a.textContent.trim();
+                    if (!t || a === primary) return false;
+                    const idx = rawText.indexOf(t);
+                    return idx >= 0 && idx < from;
+                });
+            }
         }
 
         if (primary) {
@@ -1687,6 +1700,38 @@
             appendSplitLink(div, text, linkText, a);
         } else {
             div.textContent = text;
+        }
+
+        // If we sliced off a "New: essay1 | essay2 | …" strip, render it as its
+        // own element before the YC banner so those links aren't dropped.
+        if (preText) {
+            const news = document.createElement('div');
+            news.className = 'pg-news-strip';
+            const label = document.createElement('span');
+            label.className = 'pg-news-label';
+            label.textContent = 'New';
+            news.appendChild(label);
+            if (preLinks.length > 0) {
+                preLinks.forEach((origA, i) => {
+                    const a = document.createElement('a');
+                    a.href = origA.getAttribute('href') || '#';
+                    a.textContent = origA.textContent.trim();
+                    a.className = 'pg-news-link';
+                    news.appendChild(a);
+                    if (i < preLinks.length - 1) {
+                        const sep = document.createElement('span');
+                        sep.className = 'pg-news-sep';
+                        sep.textContent = '·';
+                        news.appendChild(sep);
+                    }
+                });
+            } else {
+                // No links — just render the text stripped of the "New:" prefix.
+                const span = document.createElement('span');
+                span.textContent = preText.replace(/^New[:\s]+/i, '');
+                news.appendChild(span);
+            }
+            el.parentNode.insertBefore(news, el);
         }
 
         el.replaceWith(div);

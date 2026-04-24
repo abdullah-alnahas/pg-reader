@@ -1537,6 +1537,52 @@ html.pg-articles-layout .pg-reader h1 {
   text-decoration-color: var(--pg-accent);
 }
 
+/* Home-page "New:" strip — fresh essay highlights before the YC banner */
+.pg-news-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 0.9em 40px;
+  margin: 0 0 0.4em;
+  font-size: 0.95em;
+  line-height: 1.5;
+  border-bottom: 1px dashed var(--pg-border);
+}
+
+.pg-news-label {
+  font-size: 0.72em;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: 4px;
+  background: var(--pg-accent);
+  color: var(--pg-bg);
+}
+
+.pg-news-link {
+  color: var(--pg-fg) !important;
+  text-decoration: none;
+  font-weight: 500;
+  border-bottom: 1px solid var(--pg-accent-soft);
+  transition: border-color 120ms ease, color 120ms ease;
+}
+
+.pg-news-link:hover {
+  color: var(--pg-accent) !important;
+  border-bottom-color: var(--pg-accent);
+}
+
+.pg-news-sep {
+  color: var(--pg-muted);
+  font-weight: 400;
+}
+
+@media (max-width: 768px) {
+  .pg-news-strip { padding: 0.9em 20px; }
+}
+
 /* ── Utility layout (bio, info, quo, kedrosky, raq, faq) ─── */
 
 html.pg-utility-layout main#main-content {
