@@ -161,7 +161,7 @@
             const links = td.querySelectorAll('a').length;
             const brs = td.querySelectorAll('br').length;
             const isEssayList = links >= 4 && brs >= links - 1;
-            if (textLen > maxTextLen && (textLen > 200 || isEssayList)) {
+            if (textLen > maxTextLen && (textLen > 40 || isEssayList)) {
                 maxTextLen = textLen;
                 contentTd = td;
             }
