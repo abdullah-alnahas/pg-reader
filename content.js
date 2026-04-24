@@ -1814,7 +1814,10 @@
         const candidateNotes = directParagraphs.slice(noteStartIndex).filter(p =>
             NOTE_START_RE.test(p.textContent.trim()) || p.querySelector('a[name]')
         );
-        if (candidateNotes.length < 2) return;
+        // Require at least 2 notes, OR 1 note that has a real named anchor target
+        // (e.g. field.html: single <a name="f1n">1</a>] paragraph).
+        if (candidateNotes.length < 1) return;
+        if (candidateNotes.length < 2 && !candidateNotes[0].querySelector('a[name]')) return;
 
         const section = document.createElement('section');
         section.className = 'pg-notes';

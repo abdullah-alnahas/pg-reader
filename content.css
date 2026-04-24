@@ -1547,7 +1547,6 @@ html.pg-articles-layout .pg-reader h1 {
   margin: 0 0 0.4em;
   font-size: 0.95em;
   line-height: 1.5;
-  border-bottom: 1px dashed var(--pg-border);
 }
 
 .pg-news-label {
